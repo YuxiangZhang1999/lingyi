@@ -46,24 +46,26 @@ python translate_cli.py 論文.pdf -p deepseek -m deepseek-chat --src ja -f md
 
 ## 部署到网上
 
-1. 准备一台云服务器（国内访问 Claude / GPT / Gemini 需要海外服务器或中转地址）。
-2. 在 `.env` 里设置 `HOST=0.0.0.0`，并**务必设置 `APP_PASSWORD`**，否则任何人都能用你的 Key。
-3. 用 Docker 运行：
+推荐海外地域（新加坡 / 东京）的云服务器：所有模型都能调用，且无需备案。注意不要选中国香港，Claude、GPT、Gemini 不对香港提供服务。
+
+在一台全新的 Ubuntu 22.04 / 24.04 服务器上运行一条命令即可完成部署，并自动配置 HTTPS：
 
 ```bash
-docker build -t lingyi .
+curl -fsSL https://raw.githubusercontent.com/YuxiangZhang1999/lingyi/main/deploy/setup.sh | sudo bash
 ```
 
-```bash
-docker run -d -p 8000:8000 --env-file .env --name lingyi lingyi
-```
-
-4. 正式使用建议前面加 Nginx / Caddy 配置 HTTPS 域名。也可以部署到 Render、Railway、Fly.io 等平台（直接用这个 Dockerfile）。
+- 默认使用 `服务器IP.sslip.io` 免费域名，例如 `https://43-133-1-2.sslip.io`。
+- 有自己的域名时，先把域名解析（A 记录）指向服务器 IP，再运行：`curl -fsSL ...setup.sh | sudo DOMAIN=lingyi.example.com bash`
+- 默认不在服务器上放任何 API Key，用户在网页中填写自己的 Key。若在 `/opt/lingyi/.env` 中填了你的 Key，**务必同时设置 `APP_PASSWORD`**，然后运行 `cd /opt/lingyi && sudo docker compose up -d`。
+- 更新到最新代码：`sudo bash /opt/lingyi/deploy/update.sh`
+- 云服务器防火墙需放行 80 和 443 端口。
 
 ## 目录结构
 
 ```
 app.py                 网页后端（FastAPI）
+docker-compose.yml     线上部署（应用 + Caddy 自动 HTTPS）
+deploy/                一键部署与更新脚本
 translate_cli.py       命令行入口
 static/index.html      网页前端（单文件，无需构建）
 translator/

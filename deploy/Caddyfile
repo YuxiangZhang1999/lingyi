@@ -1,0 +1,7 @@
+# SITE_ADDRESS 是域名（如 lingyi.example.com）时，Caddy 会自动申请并续期 HTTPS 证书
+{$SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy app:8000 {
+		flush_interval -1   # 翻译进度是流式返回的，不能缓冲
+	}
+}

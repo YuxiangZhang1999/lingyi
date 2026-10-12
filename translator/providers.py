@@ -5,8 +5,11 @@
 """
 from __future__ import annotations
 
+import ipaddress
 import os
+import socket
 from typing import AsyncIterator
+from urllib.parse import urlparse
 
 from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
@@ -72,6 +75,24 @@ def resolve_key(provider: str, api_key: str | None) -> str | None:
     return os.getenv(PROVIDERS[provider]["env"]) or None
 
 
+def _check_base_url(url: str) -> None:
+    """公网部署时，禁止用户填写指向内网/本机的 Base URL（防止被用来探测服务器内网）。
+    本机运行（HOST=127.0.0.1）或设置 ALLOW_PRIVATE_BASE_URL=1 时不限制，方便连接本地模型。"""
+    if os.getenv("ALLOW_PRIVATE_BASE_URL") == "1" or os.getenv("HOST", "127.0.0.1") in ("127.0.0.1", "localhost"):
+        return
+    u = urlparse(url)
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise ProviderError("Base URL 格式不正确，应以 http:// 或 https:// 开头")
+    try:
+        infos = socket.getaddrinfo(u.hostname, None)
+    except socket.gaierror:
+        raise ProviderError(f"无法解析 Base URL 的域名：{u.hostname}")
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            raise ProviderError("出于安全考虑，线上版本不允许 Base URL 指向内网地址")
+
+
 def has_server_key(provider: str) -> bool:
     return bool(os.getenv(PROVIDERS[provider]["env"]))
 
@@ -90,6 +111,8 @@ async def stream_chat(
     key = resolve_key(provider, api_key)
     if not key:
         raise ProviderError(f"缺少 API Key：请在网页中填写，或在服务器设置环境变量 {PROVIDERS[provider]['env']}")
+    if base_url:
+        _check_base_url(base_url)
 
     if provider == "claude":
         async for t in _stream_claude(model, system, user, key, base_url):
