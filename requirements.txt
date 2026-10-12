@@ -1,0 +1,8 @@
+anthropic>=1.13
+openai>=3.0
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+python-dotenv>=1.0
+pymupdf>=1.24
+python-docx>=1.1

@@ -1,0 +1,15 @@
+# 密钥与本地配置（切勿上传）
+.env
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
