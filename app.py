@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+from collections import defaultdict, deque
 from pathlib import Path
 from urllib.parse import quote
 
@@ -10,18 +12,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile  # noqa: E402
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile  # noqa: E402
 from fastapi.responses import FileResponse, Response, StreamingResponse  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 from translator.core import DEFAULT_DA, DEFAULT_XIN, DEFAULT_YA, Item, Settings, translate_items  # noqa: E402
 from translator.export import FORMATS, export  # noqa: E402
 from translator.extract import extract  # noqa: E402
-from translator.providers import PROVIDERS, has_server_key  # noqa: E402
+from translator.glossary import generate_glossary  # noqa: E402
+from translator.providers import FREE_MODEL, PROVIDERS, ProviderError, free_extra_body, has_server_key  # noqa: E402
 
 BASE = Path(__file__).parent
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "30"))
 APP_PASSWORD = os.getenv("APP_PASSWORD", "")
+# 免费术语表的防滥用限制：每个 IP 每小时次数、全站每天总次数、单次最多处理的字符数
+FREE_PER_IP_HOUR = int(os.getenv("FREE_GLOSSARY_PER_IP_HOUR", "10"))
+FREE_PER_DAY = int(os.getenv("FREE_GLOSSARY_PER_DAY", "500"))
+FREE_MAX_CHARS = int(os.getenv("FREE_GLOSSARY_MAX_CHARS", "60000"))
 
 app = FastAPI(title="灵译")
 
@@ -45,8 +52,10 @@ def config():
         "providers": {
             k: {"label": v["label"], "models": v["models"], "server_key": has_server_key(k),
                 "base_url": v["base_url"] or ""}
-            for k, v in PROVIDERS.items()
+            for k, v in PROVIDERS.items() if not v.get("hidden")
         },
+        "free_glossary": {"enabled": has_server_key("free"), "label": FREE_MODEL["label"],
+                          "per_hour": FREE_PER_IP_HOUR, "max_chars": FREE_MAX_CHARS},
     }
 
 
@@ -82,6 +91,8 @@ class TranslateReq(BaseModel):
 
 @app.post("/api/translate", dependencies=[Depends(check_password)])
 async def api_translate(req: TranslateReq):
+    if req.provider not in PROVIDERS or PROVIDERS[req.provider].get("hidden"):
+        raise HTTPException(400, "不支持的服务商")
     items = [Item(int(x["id"]), str(x["text"])) for x in req.items if str(x.get("text", "")).strip()]
     if not items:
         raise HTTPException(400, "没有需要翻译的内容")
@@ -93,6 +104,72 @@ async def api_translate(req: TranslateReq):
             yield json.dumps(ev, ensure_ascii=False) + "\n"
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")
+
+
+class GlossaryReq(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2_000_000)
+    use_free: bool = True              # True：内置免费模型；False：用户自己选的模型和 Key
+    provider: str = "deepseek"
+    model: str = "deepseek-chat"
+    api_key: str | None = None
+    base_url: str | None = None
+    source_lang: str = "auto"
+    target_lang: str = "zh"
+    domain: str = ""
+
+
+_ip_hits: dict[str, deque] = defaultdict(deque)
+_day_hits: deque = deque()
+
+
+def _client_ip(request: Request) -> str:
+    # 部署在 Caddy 之后：Caddy 会写入真实客户端 IP（取最后一个，避免被伪造的请求头欺骗）
+    xff = request.headers.get("x-forwarded-for", "")
+    return xff.split(",")[-1].strip() if xff else (request.client.host if request.client else "?")
+
+
+def _take_free_quota(ip: str):
+    now = time.time()
+    hits = _ip_hits[ip]
+    while hits and now - hits[0] > 3600:
+        hits.popleft()
+    while _day_hits and now - _day_hits[0] > 86400:
+        _day_hits.popleft()
+    if len(hits) >= FREE_PER_IP_HOUR:
+        wait = int(3600 - (now - hits[0])) // 60 + 1
+        raise HTTPException(429, f"免费额度已用完：每小时最多 {FREE_PER_IP_HOUR} 次，请约 {wait} 分钟后再试，或改用自己的模型")
+    if len(_day_hits) >= FREE_PER_DAY:
+        raise HTTPException(429, "今日全站免费额度已用完，请明天再试，或改用自己的模型")
+    hits.append(now)
+    _day_hits.append(now)
+
+
+@app.post("/api/glossary", dependencies=[Depends(check_password)])
+async def api_glossary(req: GlossaryReq, request: Request):
+    common = dict(source_lang=req.source_lang, target_lang=req.target_lang, domain=req.domain)
+    try:
+        if req.use_free:
+            if not has_server_key("free"):
+                raise HTTPException(503, "本站暂未配置免费模型，请改用自己的模型")
+            _take_free_quota(_client_ip(request))
+            result = await generate_glossary(
+                req.text, provider="free", model=FREE_MODEL["model"], extra_body=free_extra_body(),
+                max_chars=FREE_MAX_CHARS, **common)
+            result["model"] = FREE_MODEL["label"]
+        else:
+            if req.provider not in PROVIDERS or PROVIDERS[req.provider].get("hidden"):
+                raise HTTPException(400, "不支持的服务商")
+            result = await generate_glossary(
+                req.text, provider=req.provider, model=req.model, api_key=req.api_key,
+                base_url=req.base_url, max_chars=200_000, **common)
+            result["model"] = req.model
+    except ProviderError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"模型调用失败：{type(e).__name__}: {e}")
+    return result
 
 
 class ExportReq(BaseModel):

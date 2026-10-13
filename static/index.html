@@ -62,6 +62,18 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent);
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; letter-spacing: .1em; padding: 8px 22px; }
 button.primary:hover:not(:disabled) { background: var(--accent-2); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
 button:disabled { opacity: .45; cursor: not-allowed; }
+.gloss-gen { margin-top: 10px; }
+.gloss-drop { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 10px; border: 1.5px dashed var(--line);
+  border-radius: 10px; font-size: 12.5px; color: var(--muted); cursor: pointer; text-align: center; transition: all .25s; }
+.gloss-drop b { color: var(--accent); font-weight: 600; }
+.gloss-drop svg { flex: none; color: var(--accent); }
+.gloss-drop:hover, .gloss-drop.over { border-color: var(--accent); background: var(--accent-weak); color: var(--text); }
+.gloss-drop.busy { pointer-events: none; border-style: solid; border-color: var(--accent); background: var(--accent-weak); }
+.gloss-drop.busy svg { animation: spin 1.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.gloss-gen button { flex: 1; padding: 6px 8px; font-size: 12.5px; }
+#glossStatus.err { color: var(--err); }
+#glossStatus.ok { color: var(--ok); }
 details > summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 14px; list-style: none; }
 details > summary::before { content: "›"; display: inline-block; margin-right: 6px; transition: transform .2s; }
 details[open] > summary::before { transform: rotate(90deg); }
@@ -217,7 +229,22 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 0 
       <label>学科领域（可选）</label>
       <input id="domain" placeholder="如：经济史、材料科学、日本近代文学">
       <label>术语表（可选，每行一条）</label>
-      <textarea id="glossary" rows="4" placeholder="path dependence = 路径依赖&#10;Bildung = 教化&#10;近代化 = 近代化"></textarea>
+      <textarea id="glossary" rows="5" placeholder="path dependence = 路径依赖&#10;Bildung = 教化&#10;近代化 = 近代化"></textarea>
+      <div class="gloss-gen">
+        <div class="gloss-drop" id="glossDrop">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 1.5l1.4 3.6 3.6 1.4-3.6 1.4L8 11.5 6.6 7.9 3 6.5l3.6-1.4z"/><path d="M13 11l.6 1.4 1.4.6-1.4.6L13 15l-.6-1.4-1.4-.6 1.4-.6z"/></svg>
+          <span>拖入文本或文件，<b>AI 自动生成术语表</b></span>
+          <input type="file" id="glossFile" accept=".pdf,.docx,.txt,.md,.markdown,.tex" hidden>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <select id="glossModel"></select>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="btnGlossDoc">从当前文献生成</button>
+          <button id="btnGlossClear">清空术语表</button>
+        </div>
+        <div class="hint" id="glossStatus"></div>
+      </div>
       <details>
         <summary>高级选项</summary>
         <label>其他要求</label>
@@ -397,6 +424,7 @@ async function init() {
   if (!["docx", "pdf", "md", "txt"].includes($("exportFmt").value)) $("exportFmt").value = "docx";
   onProviderChange(true);
   initStyle();
+  initGlossaryGen();
   if (CONFIG.password_required) { $("pwBox").style.display = ""; $("pwBox").closest("details").open = true; $("appPassword").value = store.get("pw", ""); }
   $("provider").addEventListener("change", () => { onProviderChange(false); saveSettings(); });
   SETTING_IDS.concat(["apiKey"]).forEach(id => $(id).addEventListener("change", saveSettings));
@@ -597,6 +625,97 @@ $("btnExport").onclick = async () => {
     setStatus("已导出。");
   } catch (e) { setStatus("导出失败：" + e.message, true); }
   finally { updateButtons(); }
+};
+
+// ---------- 自动生成术语表 ----------
+function initGlossaryGen() {
+  const fg = CONFIG.free_glossary || {};
+  $("glossModel").innerHTML =
+    (fg.enabled ? `<option value="free">内置免费模型（${esc(fg.label)}）</option>` : "") +
+    `<option value="own">用上方选择的模型（需自己的 Key）</option>`;
+  const saved = store.get("glossModel", null);
+  if (saved && [...$("glossModel").options].some(o => o.value === saved)) $("glossModel").value = saved;
+  $("glossModel").onchange = () => store.set("glossModel", $("glossModel").value);
+  if (!fg.enabled) setGlossStatus("本站暂未配置免费模型，将使用你在上方选择的模型。");
+}
+
+function setGlossStatus(t, cls = "") { $("glossStatus").textContent = t; $("glossStatus").className = "hint " + cls; }
+
+function parseGlossary(text) {
+  const map = new Map();
+  text.split("\n").forEach(line => {
+    const m = line.match(/^\s*(.+?)\s*[=＝]\s*(.+?)\s*$/);
+    if (m) map.set(m[1].toLowerCase(), [m[1], m[2]]);
+  });
+  return map;
+}
+
+async function generateGlossary(text, label) {
+  text = (text || "").trim();
+  if (!text) return setGlossStatus("没有可用的文本。", "err");
+  const useFree = $("glossModel").value === "free";
+  const body = {
+    text, use_free: useFree,
+    provider: $("provider").value, model: $("model").value.trim(),
+    api_key: $("apiKey").value.trim() || null, base_url: $("baseUrl").value.trim() || null,
+    source_lang: $("sourceLang").value, target_lang: $("targetLang").value, domain: $("domain").value,
+  };
+  $("glossDrop").classList.add("busy");
+  $("btnGlossDoc").disabled = true;
+  setGlossStatus(`正在分析「${label}」中的术语…（约 ${Math.max(1, Math.ceil(Math.min(text.length, 60000) / 6000))} 段，通常需要 10–60 秒）`);
+  try {
+    const res = await fetch("/api/glossary", { method: "POST", headers: headers(), body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(await errorText(res));
+    const j = await res.json();
+    const existing = parseGlossary($("glossary").value);
+    let added = 0;
+    const lines = $("glossary").value.trim() ? [$("glossary").value.trim()] : [];
+    for (const t of j.terms) {
+      if (existing.has(t.src.toLowerCase())) continue;   // 已有的条目（可能是用户改过的）保持不变
+      existing.set(t.src.toLowerCase(), [t.src, t.tgt]);
+      lines.push(`${t.src} = ${t.tgt}`); added++;
+    }
+    $("glossary").value = lines.join("\n");
+    saveSettings();
+    let msg = `生成 ${j.terms.length} 条，新增 ${added} 条（${j.model}）。请检查并修改译名。`;
+    if (j.truncated) msg += " 文本较长，已从全文均匀抽取部分内容分析。";
+    if (j.failed_chunks) msg += ` 有 ${j.failed_chunks} 段分析失败。`;
+    setGlossStatus(msg, "ok");
+  } catch (e) {
+    setGlossStatus("生成失败：" + e.message, "err");
+  } finally {
+    $("glossDrop").classList.remove("busy");
+    $("btnGlossDoc").disabled = false;
+  }
+}
+
+async function glossFromFile(file) {
+  if (/\.(txt|md|markdown|tex)$/i.test(file.name)) return generateGlossary(await file.text(), file.name);
+  setGlossStatus(`正在读取 ${file.name} …`);
+  const fd = new FormData(); fd.append("file", file);
+  const res = await fetch("/api/extract", { method: "POST", body: fd, headers: headers(false) });
+  if (!res.ok) return setGlossStatus("读取失败：" + await errorText(res), "err");
+  const j = await res.json();
+  generateGlossary(j.paragraphs.map(p => p.text).join("\n\n"), file.name);
+}
+
+$("glossDrop").onclick = () => $("glossFile").click();
+$("glossFile").onchange = e => { e.target.files[0] && glossFromFile(e.target.files[0]); e.target.value = ""; };
+$("glossDrop").ondragover = e => { e.preventDefault(); $("glossDrop").classList.add("over"); };
+$("glossDrop").ondragleave = () => $("glossDrop").classList.remove("over");
+$("glossDrop").ondrop = e => {
+  e.preventDefault(); $("glossDrop").classList.remove("over");
+  const f = e.dataTransfer.files[0];
+  if (f) return glossFromFile(f);
+  const t = e.dataTransfer.getData("text/plain");   // 也支持直接拖入选中的文字
+  if (t) generateGlossary(t, "拖入的文本");
+};
+$("btnGlossDoc").onclick = () => {
+  if (!doc || !doc.paras.length) return setGlossStatus("请先在右侧上传文献或粘贴文本。", "err");
+  generateGlossary(doc.paras.map(p => p.src).join("\n\n"), doc.name);
+};
+$("btnGlossClear").onclick = () => {
+  if (!$("glossary").value.trim() || confirm("确定清空术语表吗？")) { $("glossary").value = ""; saveSettings(); setGlossStatus(""); }
 };
 
 init();

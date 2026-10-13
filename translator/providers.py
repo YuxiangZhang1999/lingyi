@@ -60,6 +60,27 @@ PROVIDERS: dict[str, dict] = {
     },
 }
 
+# 内置免费模型：仅用于“自动生成术语表”，由服务器配置 Key，不在服务商列表中展示。
+# 默认使用智谱 GLM-4.7-Flash（官方免费模型），可通过环境变量替换为其他 OpenAI 兼容的免费模型。
+FREE_MODEL = {
+    "env": "FREE_API_KEY",
+    "base_url": os.getenv("FREE_BASE_URL") or "https://open.bigmodel.cn/api/paas/v4/",
+    "model": os.getenv("FREE_MODEL") or "glm-4.7-flash",
+    "label": os.getenv("FREE_MODEL_LABEL") or "智谱 GLM-4.7-Flash",
+}
+PROVIDERS["free"] = {"label": FREE_MODEL["label"], "env": FREE_MODEL["env"],
+                     "base_url": FREE_MODEL["base_url"], "models": [FREE_MODEL["model"]], "hidden": True}
+
+
+def free_extra_body() -> dict | None:
+    """默认关闭智谱模型的深度思考，抽取术语更快；不需要时可设 FREE_EXTRA_BODY={}。"""
+    raw = os.getenv("FREE_EXTRA_BODY")
+    if raw is None:
+        return {"thinking": {"type": "disabled"}} if "bigmodel.cn" in FREE_MODEL["base_url"] else None
+    import json
+    return json.loads(raw) or None
+
+
 # 支持服务端拒答兜底（fallbacks="default"）的 Claude 模型；Haiku 不支持。
 _CLAUDE_FALLBACK_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1", "claude-opus-5"}
 
@@ -104,6 +125,7 @@ async def stream_chat(
     user: str,
     api_key: str | None = None,
     base_url: str | None = None,
+    extra_body: dict | None = None,
 ) -> AsyncIterator[str]:
     """以流式方式返回模型输出的文本片段。"""
     if provider not in PROVIDERS:
@@ -121,7 +143,7 @@ async def stream_chat(
         url = base_url or PROVIDERS[provider]["base_url"]
         if provider == "custom" and not url:
             raise ProviderError("自定义服务商需要填写 Base URL")
-        async for t in _stream_openai_compatible(model, system, user, key, url):
+        async for t in _stream_openai_compatible(model, system, user, key, url, extra_body):
             yield t
 
 
@@ -150,7 +172,7 @@ async def _stream_claude(model, system, user, key, base_url) -> AsyncIterator[st
         raise ProviderError("输出被截断（max_tokens），请调小分块大小")
 
 
-async def _stream_openai_compatible(model, system, user, key, base_url) -> AsyncIterator[str]:
+async def _stream_openai_compatible(model, system, user, key, base_url, extra_body=None) -> AsyncIterator[str]:
     client = AsyncOpenAI(api_key=key, base_url=base_url, max_retries=3)
     stream = await client.chat.completions.create(
         model=model,
@@ -159,6 +181,7 @@ async def _stream_openai_compatible(model, system, user, key, base_url) -> Async
             {"role": "user", "content": user},
         ],
         stream=True,
+        extra_body=extra_body,
     )
     finish = None
     async for chunk in stream:

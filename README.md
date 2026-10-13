@@ -12,6 +12,7 @@
 - 「信达雅」三档滑块调节翻译风格：信（直译）与达（意译）此消彼长，雅（润色）随意译升降；默认 信 7 · 达 4 · 雅 5（学术严谨、适度润色）
 - 原文语言：英、日、德、法、俄、文言文、其他（AI 自动识别）；译为简体中文 / 繁体中文 / 英文
 - 可设置学科领域、术语表、额外要求
+- **AI 自动生成术语表**：拖入文本或文件（或一键从当前文献生成），自动抽取专业术语和专有名词并给出规范译名；内置免费模型（智谱 GLM-4.7-Flash），不填 Key 也能用
 - 双语对照显示，译文可直接在网页上修改
 - 单块失败不影响其他部分，可一键重试失败段；中途停止后可继续
 - 进度自动保存在浏览器中，刷新页面不丢失
@@ -57,6 +58,7 @@ curl -fsSL https://raw.githubusercontent.com/YuxiangZhang1999/lingyi/main/deploy
 - 默认使用 `服务器IP.sslip.io` 免费域名，例如 `https://43-133-1-2.sslip.io`。
 - 有自己的域名时，先把域名解析（A 记录）指向服务器 IP，再运行：`curl -fsSL ...setup.sh | sudo DOMAIN=lingyi.example.com bash`
 - 默认不在服务器上放任何 API Key，用户在网页中填写自己的 Key。若在 `/opt/lingyi/.env` 中填了你的 Key，**务必同时设置 `APP_PASSWORD`**，然后运行 `cd /opt/lingyi && sudo docker compose up -d`。
+- 开启「内置免费模型」生成术语表：到 [智谱开放平台](https://open.bigmodel.cn) 免费申请 API Key，填入 `/opt/lingyi/.env` 的 `FREE_API_KEY=`，再运行更新命令。
 - 更新到最新代码：`sudo bash /opt/lingyi/deploy/update.sh`
 - 云服务器防火墙需放行 80 和 443 端口。
 
@@ -72,6 +74,7 @@ translator/
   providers.py         各模型服务商的统一调用（Claude 用 anthropic SDK，其余用 OpenAI 兼容接口）
   extract.py           PDF / DOCX / TXT 文本提取与段落整理
   core.py              分块、提示词、并发翻译、结果解析
+  glossary.py          自动生成术语表（分块抽取、合并去重）
   export.py            导出 Word / PDF / Markdown / 纯文本（可保留原文版式）
 ```
 
