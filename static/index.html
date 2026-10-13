@@ -175,8 +175,7 @@ tr.pagebreak td { padding: 3px 14px; font-size: 11px; color: var(--muted); text-
 .view-tgt col.c-src { width: 0; }
 .view-tgt td.src { padding: 0; font-size: 0; overflow: hidden; }
 @media (max-width: 700px) { col.c-src { width: 0; } td.src { padding: 0; font-size: 0; overflow: hidden; } col.c-n { width: 32px; } td.n { padding-right: 4px; } }
-.empty-state { flex: 1; display: grid; place-items: center; min-height: 160px; color: var(--muted); font: 15px/1 var(--serif); letter-spacing: .4em; }
-.empty-state span { padding-left: .4em; opacity: .8; }
+.empty-state { flex: 1; min-height: 160px; }  /* 未载入文献时译文窗口保持空白 */
 
 /* ---------- 导出条 ---------- */
 .export-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 9px 14px; }
@@ -338,7 +337,7 @@ footer a { text-decoration: none; border-bottom: 1px dashed currentColor; }
     </section>
     <section class="card sheet" id="sheet">
       <table id="table"><colgroup><col class="c-n"><col class="c-src"><col class="c-tgt"></colgroup><tbody id="tbody"></tbody></table>
-      <div class="empty-state" id="emptyState"><span>静候佳篇</span></div>
+      <div class="empty-state" id="emptyState"></div>
     </section>
   </div>
 
