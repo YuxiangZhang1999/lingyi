@@ -2,11 +2,17 @@
 
 信 · 达 · 雅 —— 用大模型 API 翻译外文学术文献（英文 / 日文 / 德文为主，也支持法文、俄文、文言文等），提供网页界面和命令行两种用法。
 
-支持的模型服务商：Claude、GPT（OpenAI）、Gemini、DeepSeek、Kimi、通义千问，以及任何 OpenAI 兼容接口（智谱、中转站、本地 Ollama 等）。
+支持的模型服务商：
+
+- **免费**：智谱 GLM（本站内置免费额度，免填 Key 即可使用）、硅基流动、OpenRouter、Gemini（免费额度）
+- **付费**：DeepSeek、Claude、GPT、Kimi、通义千问
+- **自定义**：任何 OpenAI 兼容接口（中转站、本地 Ollama 等）
+
+每个服务商都提供几款常用模型可直接选择，也可以选「其他」自己填写模型名。
 
 ## 功能
 
-- 上传 PDF / DOCX / TXT / MD，或直接粘贴文本（扫描版或排版复杂的 PDF 建议先用 [飞桨 PaddleOCR](https://aistudio.baidu.com/paddleocr) 或 [MinerU](https://mineru.org.cn) 转成 Markdown）
+- 上传 PDF / DOCX / TXT / MD，或直接粘贴文本（扫描版或排版复杂的 PDF 建议先用 [飞桨 PaddleOCR](https://aistudio.baidu.com/paddleocr)、[MinerU](https://mineru.org.cn)、[Doc2X](https://doc2x.noedgeai.com) 或 [TextIn](https://www.textin.com) 转成 Markdown）
 - PDF 自动识别页眉、页脚和页码（翻译时排除，导出时可选保留），修复连字符断词，合并跨页段落
 - 按段落编号分块翻译，可并发，译文与原文逐段对齐
 - 「信达雅」三档滑块调节翻译风格：信（直译）与达（意译）此消彼长，雅（润色）随意译升降；默认 信 7 · 达 4 · 雅 5（学术严谨、适度润色）
@@ -40,7 +46,7 @@ python translate_cli.py paper.pdf -p claude -m claude-opus-5-5 --domain 经济�
 ```
 
 ```bash
-python translate_cli.py 論文.pdf -p deepseek -m deepseek-chat --src ja -f md
+python translate_cli.py 論文.pdf -p deepseek -m deepseek-flash --src ja -f md
 ```
 
 术语表文件每行一条，格式为 `原文 = 译文`，用 `--glossary terms.txt` 传入。
@@ -58,7 +64,7 @@ curl -fsSL https://raw.githubusercontent.com/YuxiangZhang1999/lingyi/main/deploy
 - 默认使用 `服务器IP.sslip.io` 免费域名，例如 `https://43-133-1-2.sslip.io`。
 - 有自己的域名时，先把域名解析（A 记录）指向服务器 IP，再运行：`curl -fsSL ...setup.sh | sudo DOMAIN=lingyi.example.com bash`
 - 默认不在服务器上放任何 API Key，用户在网页中填写自己的 Key。若在 `/opt/lingyi/.env` 中填了你的 Key，**务必同时设置 `APP_PASSWORD`**，然后运行 `cd /opt/lingyi && sudo docker compose up -d`。
-- 开启「内置免费模型」生成术语表：到 [智谱开放平台](https://open.bigmodel.cn) 免费申请 API Key，填入 `/opt/lingyi/.env` 的 `FREE_API_KEY=`，再运行更新命令。
+- 开启「智谱 GLM（免费）」免 Key 使用：到 [智谱开放平台](https://open.bigmodel.cn) 免费申请 API Key，填入 `/opt/lingyi/.env` 的 `FREE_API_KEY=`，再运行更新命令。之后用户不填 Key 也能翻译和生成术语表（仅限免费模型，按 IP 每天限额，可在 `.env` 中调整）。
 - 更新到最新代码：`sudo bash /opt/lingyi/deploy/update.sh`
 - 云服务器防火墙需放行 80 和 443 端口。
 

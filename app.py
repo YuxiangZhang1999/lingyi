@@ -20,15 +20,20 @@ from translator.core import DEFAULT_DA, DEFAULT_XIN, DEFAULT_YA, Item, Settings,
 from translator.export import FORMATS, export  # noqa: E402
 from translator.extract import extract  # noqa: E402
 from translator.glossary import generate_glossary  # noqa: E402
-from translator.providers import FREE_MODEL, PROVIDERS, ProviderError, free_extra_body, has_server_key  # noqa: E402
+from translator.providers import (  # noqa: E402
+    DEFAULT_PROVIDER, FREE_MODEL, PROVIDERS, ProviderError, has_server_key, uses_builtin_key)
 
 BASE = Path(__file__).parent
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "30"))
 APP_PASSWORD = os.getenv("APP_PASSWORD", "")
-# 免费术语表的防滥用限制：每个 IP 每小时次数、全站每天总次数、单次最多处理的字符数
-FREE_PER_IP_HOUR = int(os.getenv("FREE_GLOSSARY_PER_IP_HOUR", "10"))
-FREE_PER_DAY = int(os.getenv("FREE_GLOSSARY_PER_DAY", "500"))
-FREE_MAX_CHARS = int(os.getenv("FREE_GLOSSARY_MAX_CHARS", "60000"))
+
+# ---- 内置免费额度（服务器上的智谱 Key）的防滥用限制，均可在 .env 中调整 ----
+FREE_TRANSLATE_IP_DAY = int(os.getenv("FREE_TRANSLATE_CHARS_PER_IP_DAY", "100000"))  # 每个 IP 每天可免费翻译的原文字符数
+FREE_TRANSLATE_DAY = int(os.getenv("FREE_TRANSLATE_CHARS_PER_DAY", "3000000"))       # 全站每天总字符数
+FREE_CONCURRENCY = int(os.getenv("FREE_CONCURRENCY", "2"))                           # 免费模型的并发上限
+FREE_GLOSSARY_IP_HOUR = int(os.getenv("FREE_GLOSSARY_PER_IP_HOUR", "10"))
+FREE_GLOSSARY_DAY = int(os.getenv("FREE_GLOSSARY_PER_DAY", "500"))
+FREE_GLOSSARY_MAX_CHARS = int(os.getenv("FREE_GLOSSARY_MAX_CHARS", "60000"))
 
 app = FastAPI(title="灵译")
 
@@ -46,16 +51,24 @@ def index():
 
 @app.get("/api/config")
 def config():
+    providers = {}
+    for k, v in PROVIDERS.items():
+        builtin = "builtin_models" in v and has_server_key(k)
+        providers[k] = {
+            "label": v["label"], "models": v["models"], "base_url": v["base_url"] or "",
+            "key_url": v.get("key_url", ""),
+            # builtin：本站提供免费额度，用户不填 Key 也能用（仅限 builtin_models 中的模型）
+            "builtin": builtin, "builtin_models": v.get("builtin_models", []),
+            "server_key": has_server_key(k) and not builtin,
+        }
     return {
         "password_required": bool(APP_PASSWORD),
+        "default_provider": DEFAULT_PROVIDER,
         "style_defaults": {"xin": DEFAULT_XIN, "da": DEFAULT_DA, "ya": DEFAULT_YA},
-        "providers": {
-            k: {"label": v["label"], "models": v["models"], "server_key": has_server_key(k),
-                "base_url": v["base_url"] or ""}
-            for k, v in PROVIDERS.items() if not v.get("hidden")
-        },
-        "free_glossary": {"enabled": has_server_key("free"), "label": FREE_MODEL["label"],
-                          "per_hour": FREE_PER_IP_HOUR, "max_chars": FREE_MAX_CHARS},
+        "providers": providers,
+        "free_quota": {"translate_chars_per_day": FREE_TRANSLATE_IP_DAY, "glossary_per_hour": FREE_GLOSSARY_IP_HOUR},
+        "free_glossary": {"enabled": has_server_key(FREE_MODEL["provider"]), "label": FREE_MODEL["label"],
+                          "per_hour": FREE_GLOSSARY_IP_HOUR, "max_chars": FREE_GLOSSARY_MAX_CHARS},
     }
 
 
@@ -71,13 +84,58 @@ async def api_extract(file: UploadFile = File(...)):
     return {"name": file.filename, "paragraphs": paras, "pages": pages}
 
 
+# ---------- 免费额度计数（内存中，服务重启后清零） ----------
+class Quota:
+    """滑动窗口限额：window 秒内累计用量不超过 limit。"""
+
+    def __init__(self, limit: int, window: int):
+        self.limit, self.window = limit, window
+        self.hits: dict[str, deque] = defaultdict(deque)
+
+    def used(self, key: str) -> int:
+        q, now = self.hits[key], time.time()
+        while q and now - q[0][0] > self.window:
+            q.popleft()
+        return sum(n for _, n in q)
+
+    def take(self, key: str, amount: int, message: str):
+        if self.used(key) + amount > self.limit:
+            raise HTTPException(429, message)
+        self.hits[key].append((time.time(), amount))
+
+
+translate_ip_quota = Quota(FREE_TRANSLATE_IP_DAY, 86400)
+translate_day_quota = Quota(FREE_TRANSLATE_DAY, 86400)
+glossary_ip_quota = Quota(FREE_GLOSSARY_IP_HOUR, 3600)
+glossary_day_quota = Quota(FREE_GLOSSARY_DAY, 86400)
+
+
+def _client_ip(request: Request) -> str:
+    # 部署在 Caddy 之后：Caddy 会写入真实客户端 IP（取最后一个，避免被伪造的请求头欺骗）
+    xff = request.headers.get("x-forwarded-for", "")
+    return xff.split(",")[-1].strip() if xff else (request.client.host if request.client else "?")
+
+
+def _check_provider(provider: str):
+    if provider not in PROVIDERS:
+        raise HTTPException(400, "不支持的服务商")
+
+
+def _check_builtin(provider: str, model: str):
+    allowed = PROVIDERS[provider]["builtin_models"]
+    if not has_server_key(provider):
+        raise HTTPException(400, f"本站暂未开通「{PROVIDERS[provider]['label']}」的免费额度，请填写你自己的 API Key")
+    if model not in allowed:
+        raise HTTPException(400, f"免费额度只能使用 {'、'.join(allowed)}，其他模型请填写你自己的 API Key")
+
+
 class TranslateReq(BaseModel):
     items: list[dict]  # [{"id": 0, "text": "..."}]
-    provider: str = "claude"
-    model: str = "claude-opus-5-5"
+    provider: str = DEFAULT_PROVIDER
+    model: str = FREE_MODEL["model"]
     api_key: str | None = None
     base_url: str | None = None
-    source_lang: str = "auto"
+    source_lang: str = "en"
     target_lang: str = "zh"
     domain: str = ""
     glossary: str = ""
@@ -90,13 +148,20 @@ class TranslateReq(BaseModel):
 
 
 @app.post("/api/translate", dependencies=[Depends(check_password)])
-async def api_translate(req: TranslateReq):
-    if req.provider not in PROVIDERS or PROVIDERS[req.provider].get("hidden"):
-        raise HTTPException(400, "不支持的服务商")
+async def api_translate(req: TranslateReq, request: Request):
+    _check_provider(req.provider)
     items = [Item(int(x["id"]), str(x["text"])) for x in req.items if str(x.get("text", "")).strip()]
     if not items:
         raise HTTPException(400, "没有需要翻译的内容")
     s = Settings(**req.model_dump(exclude={"items"}))
+    if uses_builtin_key(req.provider, req.api_key):
+        _check_builtin(req.provider, req.model)
+        chars, ip = sum(len(it.text) for it in items), _client_ip(request)
+        left = max(0, FREE_TRANSLATE_IP_DAY - translate_ip_quota.used(ip))
+        translate_ip_quota.take(ip, chars, f"今日免费翻译额度不足：每天 {FREE_TRANSLATE_IP_DAY // 10000} 万字符，"
+                                           f"还剩约 {left} 字符，本次需要 {chars} 字符。可分批翻译，或填写自己的 API Key")
+        translate_day_quota.take("all", chars, "今日全站免费额度已用完，请明天再试，或填写自己的 API Key")
+        s.concurrency = min(s.concurrency, FREE_CONCURRENCY)  # 免费模型并发受限
 
     async def gen():
         # NDJSON：每行一个 JSON 事件，前端边收边显示
@@ -109,60 +174,35 @@ async def api_translate(req: TranslateReq):
 class GlossaryReq(BaseModel):
     text: str = Field(..., min_length=1, max_length=2_000_000)
     use_free: bool = True              # True：内置免费模型；False：用户自己选的模型和 Key
-    provider: str = "deepseek"
-    model: str = "deepseek-chat"
+    provider: str = DEFAULT_PROVIDER
+    model: str = FREE_MODEL["model"]
     api_key: str | None = None
     base_url: str | None = None
-    source_lang: str = "auto"
+    source_lang: str = "en"
     target_lang: str = "zh"
     domain: str = ""
-
-
-_ip_hits: dict[str, deque] = defaultdict(deque)
-_day_hits: deque = deque()
-
-
-def _client_ip(request: Request) -> str:
-    # 部署在 Caddy 之后：Caddy 会写入真实客户端 IP（取最后一个，避免被伪造的请求头欺骗）
-    xff = request.headers.get("x-forwarded-for", "")
-    return xff.split(",")[-1].strip() if xff else (request.client.host if request.client else "?")
-
-
-def _take_free_quota(ip: str):
-    now = time.time()
-    hits = _ip_hits[ip]
-    while hits and now - hits[0] > 3600:
-        hits.popleft()
-    while _day_hits and now - _day_hits[0] > 86400:
-        _day_hits.popleft()
-    if len(hits) >= FREE_PER_IP_HOUR:
-        wait = int(3600 - (now - hits[0])) // 60 + 1
-        raise HTTPException(429, f"免费额度已用完：每小时最多 {FREE_PER_IP_HOUR} 次，请约 {wait} 分钟后再试，或改用自己的模型")
-    if len(_day_hits) >= FREE_PER_DAY:
-        raise HTTPException(429, "今日全站免费额度已用完，请明天再试，或改用自己的模型")
-    hits.append(now)
-    _day_hits.append(now)
 
 
 @app.post("/api/glossary", dependencies=[Depends(check_password)])
 async def api_glossary(req: GlossaryReq, request: Request):
     common = dict(source_lang=req.source_lang, target_lang=req.target_lang, domain=req.domain)
+    if req.use_free:
+        provider, model, api_key, base_url = FREE_MODEL["provider"], FREE_MODEL["model"], None, None
+    else:
+        _check_provider(req.provider)
+        provider, model, api_key, base_url = req.provider, req.model, req.api_key, req.base_url
+    builtin = uses_builtin_key(provider, api_key)
     try:
-        if req.use_free:
-            if not has_server_key("free"):
-                raise HTTPException(503, "本站暂未配置免费模型，请改用自己的模型")
-            _take_free_quota(_client_ip(request))
-            result = await generate_glossary(
-                req.text, provider="free", model=FREE_MODEL["model"], extra_body=free_extra_body(),
-                max_chars=FREE_MAX_CHARS, **common)
-            result["model"] = FREE_MODEL["label"]
-        else:
-            if req.provider not in PROVIDERS or PROVIDERS[req.provider].get("hidden"):
-                raise HTTPException(400, "不支持的服务商")
-            result = await generate_glossary(
-                req.text, provider=req.provider, model=req.model, api_key=req.api_key,
-                base_url=req.base_url, max_chars=200_000, **common)
-            result["model"] = req.model
+        if builtin:
+            _check_builtin(provider, model)
+            ip = _client_ip(request)
+            glossary_ip_quota.take(ip, 1, f"免费额度已用完：每小时最多生成 {FREE_GLOSSARY_IP_HOUR} 次，"
+                                          "请稍后再试，或填写自己的 API Key")
+            glossary_day_quota.take("all", 1, "今日全站免费额度已用完，请明天再试，或填写自己的 API Key")
+        result = await generate_glossary(
+            req.text, provider=provider, model=model, api_key=api_key, base_url=base_url,
+            max_chars=FREE_GLOSSARY_MAX_CHARS if builtin else 200_000, **common)
+        result["model"] = FREE_MODEL["label"] if req.use_free else model
     except ProviderError as e:
         raise HTTPException(400, str(e))
     except HTTPException:

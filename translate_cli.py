@@ -2,8 +2,8 @@
 
 示例：
   python translate_cli.py paper.pdf -p claude -m claude-opus-5-5 --preserve-layout -f pdf
-  python translate_cli.py paper.pdf -p deepseek -m deepseek-chat --domain 经济史 -f md
-  python translate_cli.py 論文.pdf -p gemini -m gemini-2.5-pro --src ja --glossary terms.txt
+  python translate_cli.py paper.pdf -p deepseek -m deepseek-flash --domain 经济史 -f md
+  python translate_cli.py 論文.pdf -p gemini -m gemini-3-flash-preview --src ja --glossary terms.txt
 """
 from __future__ import annotations
 
@@ -16,16 +16,16 @@ from dotenv import load_dotenv
 from translator.core import DEFAULT_DA, DEFAULT_XIN, DEFAULT_YA, Item, Settings, translate_items
 from translator.export import FORMATS, export
 from translator.extract import extract
-from translator.providers import PROVIDERS
+from translator.providers import PROVIDERS, model_ids
 
 
 async def main():
     ap = argparse.ArgumentParser(description="用大模型翻译外文文献")
     ap.add_argument("file", help="PDF / DOCX / TXT / MD 文件")
-    ap.add_argument("-p", "--provider", default="claude", choices=list(PROVIDERS))
+    ap.add_argument("-p", "--provider", default="zhipu", choices=list(PROVIDERS))
     ap.add_argument("-m", "--model", default=None, help="模型名，默认取该服务商的第一个建议模型")
     ap.add_argument("--base-url", default=None)
-    ap.add_argument("--src", default="auto", help="原文语言：auto/en/ja/de/fr/ru/lzh(文言文)")
+    ap.add_argument("--src", default="en", help="原文语言：auto/en/ja/de/fr/ru/lzh(文言文)")
     ap.add_argument("--tgt", default="zh", help="zh / zh-Hant(繁体) / en")
     ap.add_argument("--xin", type=int, default=DEFAULT_XIN, help="信（直译）1-10")
     ap.add_argument("--da", type=int, default=DEFAULT_DA, help="达（意译）1-10")
@@ -46,7 +46,7 @@ async def main():
 
     s = Settings(
         provider=a.provider,
-        model=a.model or (PROVIDERS[a.provider]["models"] or [""])[0],
+        model=a.model or (model_ids(a.provider) or [""])[0],
         base_url=a.base_url, source_lang=a.src, target_lang=a.tgt, domain=a.domain,
         glossary=Path(a.glossary).read_text("utf-8") if a.glossary else "",
         xin=a.xin, da=a.da, ya=a.ya, chunk_chars=a.chunk_chars, concurrency=a.concurrency,

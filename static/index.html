@@ -20,116 +20,135 @@
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.65 var(--sans); }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13.5px/1.6 var(--sans); }
 a { color: var(--accent); }
 
 /* ---------- 页头 ---------- */
-header { position: relative; overflow: hidden; padding: 26px 28px 22px; border-bottom: 1px solid var(--line); }
-header { text-align: center; }
+header { position: relative; overflow: hidden; padding: 12px 24px 10px; border-bottom: 1px solid var(--line); text-align: center; flex: none; }
 header::before, header::after { content: ""; position: absolute; border-radius: 50%; filter: blur(40px); opacity: .5; pointer-events: none; }
-header::before { width: 420px; height: 160px; left: -80px; top: -60px; background: var(--accent-weak); animation: drift 18s ease-in-out infinite alternate; }
-header::after  { width: 300px; height: 140px; right: 8%; top: -40px; background: color-mix(in srgb, var(--seal) 12%, transparent); animation: drift 22s ease-in-out infinite alternate-reverse; }
-@keyframes drift { to { transform: translate(60px, 24px) scale(1.15); } }
-.brand { position: relative; display: flex; align-items: center; justify-content: center; gap: 16px; max-width: 1500px; margin: 0 auto; }
-.seal { width: 54px; height: 54px; flex: none; color: var(--seal); transform: rotate(-4deg); transition: transform .4s;
+header::before { width: 420px; height: 120px; left: -80px; top: -50px; background: var(--accent-weak); animation: drift 18s ease-in-out infinite alternate; }
+header::after  { width: 300px; height: 110px; right: 8%; top: -40px; background: color-mix(in srgb, var(--seal) 12%, transparent); animation: drift 22s ease-in-out infinite alternate-reverse; }
+@keyframes drift { to { transform: translate(60px, 20px) scale(1.15); } }
+.brand { position: relative; display: flex; align-items: center; justify-content: center; gap: 14px; }
+.seal { width: 44px; height: 44px; flex: none; color: var(--seal); transform: rotate(-4deg); transition: transform .4s;
         filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--seal) 25%, transparent)); }
 .brand:hover .seal { transform: rotate(0deg) scale(1.04); }
 .brand .title { text-align: center; }
-.brand h1 { margin: 0; font: 600 30px/1.1 var(--serif); letter-spacing: .3em; padding-left: .3em; }
-.brand .tag { color: var(--muted); font-size: 13px; letter-spacing: .12em; margin-top: 6px; }
-@media (max-width: 600px) { .seal { width: 44px; height: 44px; } .brand h1 { font-size: 24px; } }
+.brand h1 { margin: 0; font: 600 26px/1.1 var(--serif); letter-spacing: .3em; padding-left: .3em; }
+.brand .tag { color: var(--muted); font-size: 12px; letter-spacing: .12em; margin-top: 4px; }
 
-/* ---------- 布局 ---------- */
-.layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; padding: 20px 28px 40px; max-width: 1500px; margin: 0 auto; }
-@media (max-width: 960px) { .layout { grid-template-columns: 1fr; padding: 16px; } header { padding: 20px 16px 18px; } }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); }
-.card + .card { margin-top: 18px; }
-.card h2 { font: 600 15px/1.3 var(--serif); letter-spacing: .1em; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+/* ---------- 三栏布局 ---------- */
+.layout { display: grid; gap: 16px; padding: 12px 24px; max-width: 1680px; width: 100%; margin: 0 auto;
+  grid-template-columns: 290px minmax(0, 1fr) 290px; grid-template-areas: "left main right"; }
+.col-left { grid-area: left; } .col-main { grid-area: main; } .col-right { grid-area: right; }
+.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+/* 宽屏：整页恰好一屏高，三栏底部对齐，内容多时各栏内部滚动 */
+@media (min-width: 1200px) and (min-height: 700px) {
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .layout { flex: 1; min-height: 0; }
+  .col { overflow-y: auto; scrollbar-width: thin; padding-bottom: 2px; }
+  .col-left > .card:last-child, .col-right > .card:last-child { flex: 1 0 auto; }
+  .sheet { flex: 1; min-height: 160px; }
+}
+@media (max-width: 1199px) {
+  .layout { grid-template-columns: 280px minmax(0, 1fr); grid-template-areas: "left main" "right main"; }
+  .col-main { align-self: start; } .sheet { max-height: 80vh; }
+}
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; grid-template-areas: "left" "main" "right"; padding: 12px; }
+  header { padding: 12px 16px; }
+}
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 15px; box-shadow: var(--shadow); }
+.card h2 { font: 600 14.5px/1.3 var(--serif); letter-spacing: .1em; margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
 .card h2::before { content: ""; width: 3px; height: 14px; border-radius: 2px; background: var(--accent); }
-label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 5px; letter-spacing: .03em; }
-input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+.card h2 .sub { margin-left: auto; font: 400 11.5px var(--sans); letter-spacing: 0; color: var(--muted); }
+label { display: block; font-size: 12px; color: var(--muted); margin: 7px 0 3px; letter-spacing: .03em; }
+input, select, textarea { width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--bg); color: var(--text); font: inherit; transition: border-color .2s, box-shadow .2s; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
 textarea { resize: vertical; }
-.row { display: flex; gap: 10px; } .row > * { flex: 1; min-width: 0; }
-.hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
-.check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; margin: 12px 0 0; }
-.check input { width: auto; accent-color: var(--accent); }
+.row { display: flex; gap: 8px; } .row > * { flex: 1; min-width: 0; }
+.hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+.hint.warn { color: var(--err); }
+.hint a { text-decoration: none; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); cursor: pointer; margin: 8px 0 0; }
+.check input { width: auto; accent-color: var(--accent); margin: 0; }
+.check.small { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
 .check.disabled { color: var(--muted); cursor: not-allowed; }
-button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+button { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
   font: inherit; cursor: pointer; white-space: nowrap; transition: all .2s; }
 button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; letter-spacing: .1em; padding: 8px 22px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; letter-spacing: .1em; padding: 6px 22px; }
 button.primary:hover:not(:disabled) { background: var(--accent-2); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
 button:disabled { opacity: .45; cursor: not-allowed; }
-.gloss-gen { margin-top: 10px; }
-.gloss-drop { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 10px; border: 1.5px dashed var(--line);
-  border-radius: 10px; font-size: 12.5px; color: var(--muted); cursor: pointer; text-align: center; transition: all .25s; }
+details > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); margin-top: 10px; list-style: none; }
+details > summary::before { content: "›"; display: inline-block; margin-right: 6px; transition: transform .2s; }
+details[open] > summary::before { transform: rotate(90deg); }
+#modelCustom { margin-top: 6px; }
+
+/* ---------- 术语表生成 ---------- */
+.gloss-gen { margin-top: 8px; }
+.gloss-drop { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 10px; border: 1.5px dashed var(--line);
+  border-radius: 10px; font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; transition: all .25s; }
 .gloss-drop b { color: var(--accent); font-weight: 600; }
 .gloss-drop svg { flex: none; color: var(--accent); }
 .gloss-drop:hover, .gloss-drop.over { border-color: var(--accent); background: var(--accent-weak); color: var(--text); }
 .gloss-drop.busy { pointer-events: none; border-style: solid; border-color: var(--accent); background: var(--accent-weak); }
 .gloss-drop.busy svg { animation: spin 1.6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.gloss-gen button { flex: 1; padding: 6px 8px; font-size: 12.5px; }
+.gloss-gen select { margin-top: 6px; font-size: 12.5px; }
+.gloss-gen .row { margin-top: 6px; }
+.gloss-gen button { flex: 1; padding: 5px 8px; font-size: 12px; }
 #glossStatus.err { color: var(--err); }
 #glossStatus.ok { color: var(--ok); }
-details > summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 14px; list-style: none; }
-details > summary::before { content: "›"; display: inline-block; margin-right: 6px; transition: transform .2s; }
-details[open] > summary::before { transform: rotate(90deg); }
 
-/* ---------- 信达雅 ---------- */
-.style-box { margin-top: 6px; }
-.dial { display: grid; grid-template-columns: 38px 1fr 64px; align-items: center; gap: 10px; margin: 14px 0 0; }
-.dial .ch { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font: 600 19px/1 var(--serif);
+/* ---------- 翻译偏好（信达雅） ---------- */
+.dial { display: grid; grid-template-columns: 34px 1fr 58px; align-items: center; gap: 9px; margin: 8px 0 0; }
+.dial .ch { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 600 17px/1 var(--serif);
   border: 1px solid var(--line); background: var(--bg); transition: transform .25s, border-color .25s, color .25s; }
 .dial.active .ch { transform: scale(1.08); border-color: var(--accent); color: var(--accent); }
 .dial .meta { text-align: right; line-height: 1.2; }
-.dial .num { font: 600 18px/1 var(--serif); color: var(--accent); }
+.dial .num { font: 600 17px/1 var(--serif); color: var(--accent); }
 .dial .lv { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; white-space: nowrap; }
-.dial .cap { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+.dial .cap { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
 input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; padding: 0; border: 0; border-radius: 3px; cursor: pointer;
   background: linear-gradient(90deg, var(--accent) 0 var(--p, 50%), var(--line) var(--p, 50%) 100%); box-shadow: none; }
 input[type=range]:focus { box-shadow: none; }
-input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--panel);
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 17px; height: 17px; border-radius: 50%; background: var(--panel);
   border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.15); transition: transform .15s; }
 input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.18); }
-input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); }
-.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
-.chip { padding: 3px 11px; font-size: 12px; border-radius: 999px; }
+input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); }
+.presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
+.chip { padding: 3px 0; font-size: 11.5px; border-radius: 999px; }
 .chip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-weak); }
 
-/* ---------- 上传与提示 ---------- */
-.drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 30px 16px; text-align: center; color: var(--muted); cursor: pointer;
+/* ---------- 中栏：上传、提示、工具栏 ---------- */
+.drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 16px; text-align: center; color: var(--muted); cursor: pointer;
         transition: all .25s; background: linear-gradient(180deg, transparent, var(--accent-weak)); background-size: 100% 300%; background-position: top; }
 .drop:hover, .drop.over { border-color: var(--accent); color: var(--accent); background-position: bottom; }
-.drop strong { display: block; font: 600 16px/1.6 var(--serif); color: var(--text); letter-spacing: .06em; }
-.tip { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 11px 14px; border-radius: 10px;
-       background: color-mix(in srgb, var(--seal) 7%, var(--panel)); border: 1px solid color-mix(in srgb, var(--seal) 18%, var(--line)); font-size: 13px; }
+.drop strong { display: block; font: 600 15px/1.6 var(--serif); color: var(--text); letter-spacing: .06em; }
+.tip { display: flex; gap: 9px; align-items: flex-start; margin-top: 10px; padding: 8px 12px; border-radius: 10px;
+       background: color-mix(in srgb, var(--seal) 7%, var(--panel)); border: 1px solid color-mix(in srgb, var(--seal) 18%, var(--line)); font-size: 12.5px; }
 .tip svg { flex: none; margin-top: 3px; color: var(--seal); }
-.tip .links { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; }
-.tip .links a { text-decoration: none; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 12px; transition: all .2s; }
+.tip .links { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; vertical-align: middle; }
+.tip .links a { text-decoration: none; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 11.5px; transition: all .2s; }
 .tip .links a:hover { border-color: var(--accent); background: var(--accent-weak); }
-
-/* ---------- 工具栏与进度 ---------- */
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 0; }
 .toolbar .spacer { flex: 1; }
-.progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 14px; }
+.progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 10px; }
 .progress > div { height: 100%; width: 0; border-radius: 2px; transition: width .5s ease;
   background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent)); background-size: 200% 100%; }
 .busy .progress > div { animation: flow 1.6s linear infinite; }
 @keyframes flow { to { background-position: -200% 0; } }
-.status { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.status { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .status.err { color: var(--err); }
-.err-list { color: var(--err); font-size: 12px; white-space: pre-wrap; max-height: 120px; overflow: auto; }
-.export { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
-.export select { width: auto; }
-.export .check { margin: 0; }
+.err-list { color: var(--err); font-size: 12px; white-space: pre-wrap; max-height: 80px; overflow: auto; }
+.err-list:empty { display: none; }
 
 /* ---------- 对照表 ---------- */
-.sheet { padding: 0; overflow: hidden; }
+.sheet { padding: 0; overflow: auto; display: flex; flex-direction: column; }
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-td { vertical-align: top; padding: 12px 14px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+td { vertical-align: top; padding: 11px 14px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 tr:first-child td { border-top: 0; }
 col.c-n { width: 46px; }
 td.n { color: var(--muted); font-size: 12px; text-align: right; font-family: var(--serif); }
@@ -143,14 +162,22 @@ tr.failed td.tgt { box-shadow: inset 3px 0 0 var(--err); }
 tr.failed td.n { color: var(--err); }
 tr.fresh td.tgt { animation: ink .8s ease; }
 @keyframes ink { from { opacity: 0; transform: translateY(4px); filter: blur(2px); } }
-tr.pagebreak td { padding: 4px 14px; font-size: 11px; color: var(--muted); text-align: center; letter-spacing: .2em; background: var(--bg); }
+tr.pagebreak td { padding: 3px 14px; font-size: 11px; color: var(--muted); text-align: center; letter-spacing: .2em; background: var(--bg); }
 .view-tgt col.c-src { width: 0; }
 .view-tgt td.src { padding: 0; font-size: 0; overflow: hidden; }
 @media (max-width: 700px) { col.c-src { width: 0; } td.src { padding: 0; font-size: 0; overflow: hidden; } col.c-n { width: 32px; } td.n { padding-right: 4px; } }
-.empty { text-align: center; color: var(--muted); padding: 56px 0; font-family: var(--serif); letter-spacing: .2em; }
-footer .feedback { margin-top: 6px; font-family: var(--sans); letter-spacing: .03em; }
-footer .feedback a { text-decoration: none; border-bottom: 1px dashed currentColor; }
-footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 0 28px; letter-spacing: .1em; font-family: var(--serif); }
+.empty-state { flex: 1; display: grid; place-items: center; min-height: 160px; color: var(--muted); font: 15px/1 var(--serif); letter-spacing: .4em; }
+.empty-state span { padding-left: .4em; opacity: .8; }
+
+/* ---------- 右栏：导出 ---------- */
+.export select { margin-top: 0; }
+.export .row { margin-top: 8px; }
+.export .actions { display: flex; gap: 8px; margin-top: 10px; }
+.export .actions button { flex: 1; }
+
+footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px; padding: 4px 16px 10px; letter-spacing: .06em; }
+footer .motto { font-family: var(--serif); letter-spacing: .12em; }
+footer a { text-decoration: none; border-bottom: 1px dashed currentColor; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -181,37 +208,23 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 0 
 </header>
 
 <div class="layout">
-  <!-- 左侧：设置 -->
-  <aside>
+  <!-- ===== 左栏：模型、语言与术语 ===== -->
+  <aside class="col col-left">
     <div class="card">
       <h2>模型</h2>
       <label>服务商</label>
       <select id="provider"></select>
       <label>模型</label>
-      <input id="model" list="modelList" placeholder="可直接输入任意模型名">
-      <datalist id="modelList"></datalist>
+      <select id="modelSel"></select>
+      <input id="modelCustom" placeholder="输入模型名，如 glm-4.7-flash" style="display:none">
       <label>API Key</label>
       <input id="apiKey" type="password" autocomplete="off">
+      <label class="check small"><input type="checkbox" id="rememberKey"> 在本浏览器记住 API Key</label>
       <div class="hint" id="keyHint"></div>
-      <label>Base URL（可选，填中转/代理地址）</label>
-      <input id="baseUrl">
-    </div>
-
-    <div class="card">
-      <h2>信达雅</h2>
-      <div class="hint">拖动调整翻译风格，三者此消彼长、相互牵动。</div>
-      <div class="style-box">
-        <div class="dial" data-k="xin"><div class="ch">信</div>
-          <div><div class="cap">直译 · 忠实原文</div><input type="range" min="1" max="10" step="1" id="xin"></div>
-          <div class="meta"><span class="num" id="xinV"></span><span class="lv" id="xinL"></span></div></div>
-        <div class="dial" data-k="da"><div class="ch">达</div>
-          <div><div class="cap">意译 · 通顺晓畅</div><input type="range" min="1" max="10" step="1" id="da"></div>
-          <div class="meta"><span class="num" id="daV"></span><span class="lv" id="daL"></span></div></div>
-        <div class="dial" data-k="ya"><div class="ch">雅</div>
-          <div><div class="cap">润色 · 文辞雅致</div><input type="range" min="1" max="10" step="1" id="ya"></div>
-          <div class="meta"><span class="num" id="yaV"></span><span class="lv" id="yaL"></span></div></div>
+      <div id="customUrlBox" style="display:none">
+        <label>Base URL（必填）</label>
+        <input id="customUrl" placeholder="如 https://api.example.com/v1">
       </div>
-      <div class="presets" id="presets"></div>
     </div>
 
     <div class="card">
@@ -227,92 +240,117 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 0 
           <select id="targetLang"><option value="zh">简体中文</option><option value="zh-Hant">繁体中文</option><option value="en">英文</option></select></div>
       </div>
       <label>学科领域（可选）</label>
-      <input id="domain" placeholder="如：经济史、材料科学、日本近代文学">
+      <input id="domain" placeholder="如：哲学、历史">
       <label>术语表（可选，每行一条）</label>
-      <textarea id="glossary" rows="5" placeholder="path dependence = 路径依赖&#10;Bildung = 教化&#10;近代化 = 近代化"></textarea>
+      <textarea id="glossary" rows="4" placeholder="Dao / the Way = 道&#10;principle (li) = 理&#10;material force (qi) = 气&#10;humaneness (ren) = 仁&#10;理気二元論 = 理气二元论&#10;天人相関説 = 天人感应说"></textarea>
       <div class="gloss-gen">
         <div class="gloss-drop" id="glossDrop">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 1.5l1.4 3.6 3.6 1.4-3.6 1.4L8 11.5 6.6 7.9 3 6.5l3.6-1.4z"/><path d="M13 11l.6 1.4 1.4.6-1.4.6L13 15l-.6-1.4-1.4-.6 1.4-.6z"/></svg>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 1.5l1.4 3.6 3.6 1.4-3.6 1.4L8 11.5 6.6 7.9 3 6.5l3.6-1.4z"/><path d="M13 11l.6 1.4 1.4.6-1.4.6L13 15l-.6-1.4-1.4-.6 1.4-.6z"/></svg>
           <span>拖入文本或文件，<b>AI 自动生成术语表</b></span>
           <input type="file" id="glossFile" accept=".pdf,.docx,.txt,.md,.markdown,.tex" hidden>
         </div>
-        <div class="row" style="margin-top:8px">
-          <select id="glossModel"></select>
-        </div>
-        <div class="row" style="margin-top:8px">
+        <select id="glossModel"></select>
+        <div class="row">
           <button id="btnGlossDoc">从当前文献生成</button>
           <button id="btnGlossClear">清空术语表</button>
         </div>
         <div class="hint" id="glossStatus"></div>
       </div>
-      <details>
-        <summary>高级选项</summary>
-        <label>其他要求</label>
-        <textarea id="extra" rows="2" placeholder="如：译文用于学位论文引用"></textarea>
-        <div class="row">
-          <div><label>每块字符数</label><input id="chunkChars" type="number" min="300" max="20000" step="100" value="2500"></div>
-          <div><label>并发数</label><input id="concurrency" type="number" min="1" max="16" value="4"></div>
-        </div>
-        <div class="hint">块越大上下文越连贯；并发越高越快，但更容易触发限流。</div>
-        <label class="check"><input type="checkbox" id="rememberKey"> 在本浏览器记住 API Key</label>
-        <div id="pwBox" style="display:none"><label>访问密码</label><input id="appPassword" type="password"></div>
-      </details>
     </div>
   </aside>
 
-  <!-- 右侧：输入与结果 -->
-  <main id="main">
+  <!-- ===== 中栏：上传与对照 ===== -->
+  <main class="col col-main" id="main">
     <div class="card">
       <div class="drop" id="drop"><strong>上传文献</strong>点击或拖入 PDF / DOCX / TXT / Markdown 文件
         <input type="file" id="file" accept=".pdf,.docx,.txt,.md,.markdown,.tex" hidden></div>
       <div class="tip">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.2v4M8 4.8v.01" stroke-linecap="round"/></svg>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.2v4M8 4.8v.01" stroke-linecap="round"/></svg>
         <div>
-          建议先将 PDF 用 OCR 工具识别并<b>导出为 Markdown</b>再上传：扫描版、双栏、公式和表格较多的文献，识别效果会好得多。
-          <div class="links">
+          建议先用 OCR 工具把 PDF 识别并<b>导出为 Markdown</b>再上传，扫描版、双栏、公式表格多的文献效果好得多：
+          <span class="links">
             <a href="https://aistudio.baidu.com/paddleocr" target="_blank" rel="noopener">飞桨 PaddleOCR ↗</a>
             <a href="https://mineru.org.cn" target="_blank" rel="noopener">MinerU ↗</a>
-          </div>
+            <a href="https://doc2x.noedgeai.com" target="_blank" rel="noopener">Doc2X ↗</a>
+            <a href="https://www.textin.com" target="_blank" rel="noopener">TextIn ↗</a>
+          </span>
         </div>
       </div>
       <details>
         <summary>或者直接粘贴文本</summary>
-        <textarea id="pasteText" rows="6" placeholder="段落之间用空行分隔"></textarea>
-        <div style="margin-top:8px"><button id="loadPaste">载入文本</button></div>
+        <textarea id="pasteText" rows="5" placeholder="段落之间用空行分隔"></textarea>
+        <div style="margin-top:6px"><button id="loadPaste">载入文本</button></div>
       </details>
-
       <div class="toolbar">
         <button class="primary" id="btnStart" disabled>开始翻译</button>
         <button id="btnStop" disabled>停止</button>
         <button id="btnRetry" disabled>重试失败段</button>
         <span class="spacer"></span>
         <button id="btnView">只看译文</button>
-        <button id="btnCopy" disabled>复制译文</button>
       </div>
       <div class="progress"><div id="bar"></div></div>
       <div class="status" id="status">请先上传文件或粘贴文本。译文可直接点击修改。</div>
       <div class="err-list" id="errors"></div>
-
-      <div class="export">
-        <select id="exportFmt">
-          <option value="docx">Word (.docx)</option><option value="pdf">PDF</option>
-          <option value="md">Markdown</option><option value="txt">纯文本 (.txt)</option>
-        </select>
-        <select id="exportMode"><option value="1">双语对照</option><option value="0">仅译文</option></select>
-        <label class="check" id="preserveBox"><input type="checkbox" id="preserve"> 保留原文格式（页眉、页脚、页码与分页）</label>
-        <span class="spacer" style="flex:1"></span>
-        <button id="btnExport" disabled>导出</button>
-      </div>
     </div>
 
-    <div class="card sheet">
-      <table id="table"><colgroup><col class="c-n"><col class="c-src"><col class="c-tgt"></colgroup><tbody id="tbody"><tr><td class="empty" colspan="3">静候佳篇</td></tr></tbody></table>
+    <div class="card sheet" id="sheet">
+      <table id="table"><colgroup><col class="c-n"><col class="c-src"><col class="c-tgt"></colgroup><tbody id="tbody"></tbody></table>
+      <div class="empty-state" id="emptyState"><span>静候佳篇</span></div>
     </div>
   </main>
+
+  <!-- ===== 右栏：翻译偏好、高级选项、导出 ===== -->
+  <aside class="col col-right">
+    <div class="card">
+      <h2>翻译偏好</h2>
+      <div class="hint">信达雅三者此消彼长，拖动一项，其余随之调整。</div>
+      <div class="dial" data-k="xin"><div class="ch">信</div>
+        <div><div class="cap">直译 · 忠实原文</div><input type="range" min="1" max="10" step="1" id="xin"></div>
+        <div class="meta"><span class="num" id="xinV"></span><span class="lv" id="xinL"></span></div></div>
+      <div class="dial" data-k="da"><div class="ch">达</div>
+        <div><div class="cap">意译 · 通顺晓畅</div><input type="range" min="1" max="10" step="1" id="da"></div>
+        <div class="meta"><span class="num" id="daV"></span><span class="lv" id="daL"></span></div></div>
+      <div class="dial" data-k="ya"><div class="ch">雅</div>
+        <div><div class="cap">润色 · 文辞雅致</div><input type="range" min="1" max="10" step="1" id="ya"></div>
+        <div class="meta"><span class="num" id="yaV"></span><span class="lv" id="yaL"></span></div></div>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="card">
+      <h2>高级选项</h2>
+      <label>其他要求</label>
+      <textarea id="extra" rows="1" placeholder="如：译文用于学位论文引用"></textarea>
+      <div class="row">
+        <div><label>每块字符数</label><input id="chunkChars" type="number" min="300" max="20000" step="100" value="2500"></div>
+        <div><label>并发数</label><input id="concurrency" type="number" min="1" max="16" value="4"></div>
+      </div>
+      <div class="hint">块越大上下文越连贯；并发越高越快，但更易触发限流。</div>
+      <label id="baseUrlLabel">Base URL（可选，中转/代理地址）</label>
+      <input id="baseUrl">
+      <div id="pwBox" style="display:none"><label>访问密码</label><input id="appPassword" type="password"></div>
+    </div>
+
+    <div class="card export">
+      <h2>导出</h2>
+      <div class="row">
+        <select id="exportFmt">
+          <option value="docx">Word</option><option value="pdf">PDF</option>
+          <option value="md">Markdown</option><option value="txt">纯文本</option>
+        </select>
+        <select id="exportMode"><option value="1">双语对照</option><option value="0">仅译文</option></select>
+      </div>
+      <label class="check" id="preserveBox"><input type="checkbox" id="preserve"> 保留原文格式（页眉、页脚、页码与分页）</label>
+      <div class="actions">
+        <button id="btnCopy" disabled>复制译文</button>
+        <button id="btnExport" class="primary" disabled>导出</button>
+      </div>
+    </div>
+  </aside>
 </div>
 <footer>
-  <div>灵译 · 以信为本，以达为用，以雅为归</div>
-  <div class="feedback">意见反馈：<a href="https://github.com/YuxiangZhang1999/lingyi/issues" target="_blank" rel="noopener">GitHub Issues</a> · 开源地址：<a href="https://github.com/YuxiangZhang1999/lingyi" target="_blank" rel="noopener">github.com/YuxiangZhang1999/lingyi</a></div>
+  <span class="motto">灵译 · 以信为本，以达为用，以雅为归</span>
+  　·　意见反馈：<a href="https://github.com/YuxiangZhang1999/lingyi/issues" target="_blank" rel="noopener">GitHub Issues</a>
+  　·　开源地址：<a href="https://github.com/YuxiangZhang1999/lingyi" target="_blank" rel="noopener">github.com/YuxiangZhang1999/lingyi</a>
 </footer>
 
 <script>
@@ -322,13 +360,16 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 let CONFIG = null;
 // 文档状态：{name, pages: [{header, footer}] | null, paras: [{src, tgt, page, state}]}
 let doc = store.get("doc", null);
 let controller = null;
+const SETTINGS_VERSION = 2;   // 默认值有大改动时加 1，让老用户也用上新的默认服务商与语言
+const OTHER = "__other";
 
-// ---------- 信达雅：三者联动 ----------
+// ---------- 翻译偏好：信达雅三者联动 ----------
 // 规则：信 + 达 恒为 11（直译与意译此消彼长）；
 //       达升则雅随之上升、信升则雅随之下降；拖动雅时，达随之微升、信相应下降。
 const LEVELS = {
@@ -373,8 +414,7 @@ function renderStyle(active) {
 }
 
 function initStyle() {
-  const def = CONFIG.style_defaults;
-  style = store.get("style", null) || { ...def };
+  style = store.get("style", null) || { ...CONFIG.style_defaults };
   $("presets").innerHTML = PRESETS.map(([n]) => `<button class="chip">${n}</button>`).join("");
   document.querySelectorAll("#presets .chip").forEach((c, i) => c.onclick = () => {
     const [, xin, da, ya] = PRESETS[i];
@@ -387,47 +427,104 @@ function initStyle() {
   renderStyle();
 }
 
-// ---------- 设置 ----------
-const SETTING_IDS = ["provider", "model", "baseUrl", "sourceLang", "targetLang", "domain", "glossary", "extra",
-                     "chunkChars", "concurrency", "rememberKey", "exportFmt", "exportMode", "preserve"];
+// ---------- 模型选择 ----------
+function currentModel() {
+  return $("modelSel").value === OTHER ? $("modelCustom").value.trim() : $("modelSel").value;
+}
+function currentBaseUrl() {
+  return ($("provider").value === "custom" ? $("customUrl").value : $("baseUrl").value).trim() || null;
+}
 
-function saveSettings() {
-  const old = store.get("settings", {}), s = {};
-  SETTING_IDS.forEach(id => s[id] = $(id).type === "checkbox" ? $(id).checked : $(id).value);
-  s.modelBy = { ...(old.modelBy || {}), [$("provider").value]: $("model").value };
-  s.baseUrlBy = { ...(old.baseUrlBy || {}), [$("provider").value]: $("baseUrl").value };
-  store.set("settings", s);
-  if ($("rememberKey").checked) { const keys = store.get("keys", {}); keys[$("provider").value] = $("apiKey").value; store.set("keys", keys); }
-  else store.del("keys");
+function fillModels(p, wanted) {
+  const info = CONFIG.providers[p];
+  $("modelSel").innerHTML = info.models.map(([id, note]) => `<option value="${esc(id)}">${esc(id)}${note ? `（${esc(note)}）` : ""}</option>`).join("")
+    + `<option value="${OTHER}">其他（自己填写模型名）</option>`;
+  const ids = info.models.map(m => m[0]);
+  if (wanted && ids.includes(wanted)) { $("modelSel").value = wanted; $("modelCustom").value = ""; }
+  else if (wanted) { $("modelSel").value = OTHER; $("modelCustom").value = wanted; }
+  else $("modelSel").value = ids[0] || OTHER;
+  $("modelCustom").style.display = $("modelSel").value === OTHER ? "" : "none";
+}
+
+function updateKeyHint() {
+  const p = $("provider").value, info = CONFIG.providers[p], model = currentModel();
+  const hasKey = !!$("apiKey").value.trim();
+  const link = info.key_url ? ` <a href="${info.key_url}" target="_blank" rel="noopener">获取 Key ↗</a>` : "";
+  let html, warn = false;
+  if (info.builtin) {
+    $("apiKey").placeholder = "可留空，使用本站免费额度";
+    if (!hasKey && !info.builtin_models.includes(model)) {
+      html = `免费额度只能用 ${info.builtin_models.join("、")}，所选模型需要填写你自己的 Key。${link}`; warn = true;
+    } else {
+      const quota = Math.round(CONFIG.free_quota.translate_chars_per_day / 10000);
+      html = hasKey ? `将使用你自己的 Key，不受免费额度限制。${link}`
+                    : `免填 Key 即可使用：本站提供免费额度（每天 ${quota} 万字符）。填自己的 Key 则不受限制。${link}`;
+    }
+  } else if (info.server_key) {
+    $("apiKey").placeholder = "已在服务器配置，可留空";
+    html = "服务器已配置该服务商的 Key；在此填写则优先使用你的 Key。";
+  } else {
+    $("apiKey").placeholder = "粘贴你的 API Key";
+    html = (p === "zhipu" ? "本站暂未开通免费额度，需要填写 Key（智谱可免费申请）。" : "Key 只随请求发送到本服务器，再转发给模型服务商。") + link;
+  }
+  $("keyHint").innerHTML = html;
+  $("keyHint").className = "hint" + (warn ? " warn" : "");
 }
 
 function onProviderChange(first) {
   const p = $("provider").value, info = CONFIG.providers[p], s = store.get("settings", {});
-  $("modelList").innerHTML = info.models.map(m => `<option value="${m}">`).join("");
-  if (!first || !$("model").value) $("model").value = (s.modelBy || {})[p] || info.models[0] || "";
+  fillModels(p, (s.modelBy || {})[p]);
   $("baseUrl").value = (s.baseUrlBy || {})[p] || "";
-  $("baseUrl").placeholder = info.base_url || (p === "custom" ? "必填，如 https://open.bigmodel.cn/api/paas/v4" : "留空使用官方地址");
+  $("baseUrl").placeholder = info.base_url || "留空使用官方地址";
+  const isCustom = p === "custom";
+  $("customUrlBox").style.display = isCustom ? "" : "none";
+  $("baseUrl").style.display = $("baseUrlLabel").style.display = isCustom ? "none" : "";
+  $("customUrl").value = (s.baseUrlBy || {}).custom || "";
   $("apiKey").value = store.get("keys", {})[p] || "";
-  $("apiKey").placeholder = info.server_key ? "已在服务器配置，可留空" : "sk-...";
-  $("keyHint").textContent = info.server_key ? "服务器已配置该服务商的 Key；在此填写则优先使用你的 Key。"
-                                              : "Key 只随请求发送到本服务器，再转发给模型服务商。";
+  updateKeyHint();
+}
+
+// ---------- 设置的保存与恢复 ----------
+const SETTING_IDS = ["provider", "sourceLang", "targetLang", "domain", "glossary", "extra",
+                     "chunkChars", "concurrency", "rememberKey", "exportFmt", "exportMode", "preserve"];
+
+function saveSettings() {
+  const old = store.get("settings", {}), s = { v: SETTINGS_VERSION };
+  SETTING_IDS.forEach(id => s[id] = $(id).type === "checkbox" ? $(id).checked : $(id).value);
+  const p = $("provider").value;
+  s.modelBy = { ...(old.modelBy || {}), [p]: currentModel() };
+  s.baseUrlBy = { ...(old.baseUrlBy || {}), [p]: (p === "custom" ? $("customUrl").value : $("baseUrl").value) };
+  store.set("settings", s);
+  if ($("rememberKey").checked) { const keys = store.get("keys", {}); keys[p] = $("apiKey").value; store.set("keys", keys); }
+  else store.del("keys");
 }
 
 async function init() {
   CONFIG = await (await fetch("/api/config")).json();
-  $("provider").innerHTML = Object.entries(CONFIG.providers).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
-  $("sourceLang").value = "auto";
-  const s = store.get("settings", {});
+  $("provider").innerHTML = Object.entries(CONFIG.providers).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join("");
+  let s = store.get("settings", {});
+  if (s.v !== SETTINGS_VERSION) {   // 旧版本的设置：保留术语表等内容，服务商/模型/语言改用新的默认值
+    ["provider", "sourceLang", "targetLang", "modelBy"].forEach(k => delete s[k]);
+    store.set("settings", s);
+  }
+  $("provider").value = CONFIG.default_provider;
+  $("sourceLang").value = "en"; $("targetLang").value = "zh";
   SETTING_IDS.forEach(id => { if (s[id] !== undefined) { if ($(id).type === "checkbox") $(id).checked = s[id]; else $(id).value = s[id]; } });
-  if (!$("provider").value) $("provider").value = "claude";
-  if (!$("sourceLang").value) $("sourceLang").value = "auto";
-  if (!["docx", "pdf", "md", "txt"].includes($("exportFmt").value)) $("exportFmt").value = "docx";
+  if (!$("provider").value) $("provider").value = CONFIG.default_provider;
+  if (!$("sourceLang").value) $("sourceLang").value = "en";
+  if (!$("exportFmt").value) $("exportFmt").value = "docx";
   onProviderChange(true);
   initStyle();
   initGlossaryGen();
-  if (CONFIG.password_required) { $("pwBox").style.display = ""; $("pwBox").closest("details").open = true; $("appPassword").value = store.get("pw", ""); }
+  if (CONFIG.password_required) { $("pwBox").style.display = ""; $("appPassword").value = store.get("pw", ""); }
   $("provider").addEventListener("change", () => { onProviderChange(false); saveSettings(); });
-  SETTING_IDS.concat(["apiKey"]).forEach(id => $(id).addEventListener("change", saveSettings));
+  $("modelSel").addEventListener("change", () => {
+    $("modelCustom").style.display = $("modelSel").value === OTHER ? "" : "none";
+    if ($("modelSel").value === OTHER) $("modelCustom").focus();
+    updateKeyHint(); saveSettings();
+  });
+  ["modelCustom", "apiKey"].forEach(id => $(id).addEventListener("input", updateKeyHint));
+  SETTING_IDS.concat(["apiKey", "modelCustom", "baseUrl", "customUrl"]).forEach(id => $(id).addEventListener("change", saveSettings));
   $("appPassword").addEventListener("change", () => store.set("pw", $("appPassword").value));
   render();
 }
@@ -441,6 +538,13 @@ function headers(json = true) {
 async function errorText(res) {
   try { const j = await res.json(); return typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail || j); }
   catch { return res.status + " " + res.statusText; }
+}
+
+function modelPayload() {
+  return {
+    provider: $("provider").value, model: currentModel(),
+    api_key: $("apiKey").value.trim() || null, base_url: currentBaseUrl(),
+  };
 }
 
 // ---------- 载入文档 ----------
@@ -472,11 +576,10 @@ $("loadPaste").onclick = () => {
 };
 
 // ---------- 渲染 ----------
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
 function render() {
-  const tb = $("tbody");
-  if (!doc || !doc.paras.length) { tb.innerHTML = `<tr><td class="empty" colspan="3">静候佳篇</td></tr>`; updateButtons(); return; }
+  const tb = $("tbody"), empty = !doc || !doc.paras.length;
+  $("emptyState").style.display = empty ? "" : "none";
+  if (empty) { tb.innerHTML = ""; updateButtons(); return; }
   let lastPage = null, html = "";
   doc.paras.forEach((p, i) => {
     if (doc.pages && p.page !== null && p.page !== lastPage) {
@@ -536,15 +639,14 @@ function persist() { clearTimeout(persistTimer); persistTimer = setTimeout(() =>
 async function translate(onlyFailed) {
   const ids = doc.paras.map((p, i) => i).filter(i => onlyFailed ? doc.paras[i].state === "failed" : doc.paras[i].state !== "done");
   if (!ids.length) return setStatus("所有段落都已翻译完成。");
+  if (!currentModel()) return setStatus("请先在左侧选择或填写模型名。", true);
   saveSettings();
   $("errors").textContent = "";
   ids.forEach(i => { doc.paras[i].state = "pending"; updateRow(i); });
 
   const sv = styleValues();
   const body = {
-    items: ids.map(i => ({ id: i, text: doc.paras[i].src })),
-    provider: $("provider").value, model: $("model").value.trim(),
-    api_key: $("apiKey").value.trim() || null, base_url: $("baseUrl").value.trim() || null,
+    items: ids.map(i => ({ id: i, text: doc.paras[i].src })), ...modelPayload(),
     source_lang: $("sourceLang").value, target_lang: $("targetLang").value,
     domain: $("domain").value, glossary: $("glossary").value, extra: $("extra").value,
     xin: sv.xin, da: sv.da, ya: sv.ya,
@@ -585,7 +687,10 @@ async function translate(onlyFailed) {
     setStatus(failed ? `完成，但有 ${failed} 段失败，可点击「重试失败段」。` : `全部完成，用时 ${Math.round((Date.now() - t0) / 1000)} 秒。`, failed > 0);
   } catch (e) {
     if (e.name === "AbortError") setStatus("已停止。已完成的译文会保留，可点击「继续翻译」。");
-    else setStatus("出错：" + e.message, true);
+    else {
+      setStatus("出错：" + e.message, true);
+      ids.forEach(i => { if (doc.paras[i].state === "pending") { doc.paras[i].state = "failed"; updateRow(i); } });
+    }
   } finally {
     controller = null; updateButtons(); persist();
   }
@@ -631,12 +736,11 @@ $("btnExport").onclick = async () => {
 function initGlossaryGen() {
   const fg = CONFIG.free_glossary || {};
   $("glossModel").innerHTML =
-    (fg.enabled ? `<option value="free">内置免费模型（${esc(fg.label)}）</option>` : "") +
-    `<option value="own">用上方选择的模型（需自己的 Key）</option>`;
+    (fg.enabled ? `<option value="free">用内置免费模型（${esc(fg.label)}）</option>` : "") +
+    `<option value="own">用上方选择的模型</option>`;
   const saved = store.get("glossModel", null);
   if (saved && [...$("glossModel").options].some(o => o.value === saved)) $("glossModel").value = saved;
   $("glossModel").onchange = () => store.set("glossModel", $("glossModel").value);
-  if (!fg.enabled) setGlossStatus("本站暂未配置免费模型，将使用你在上方选择的模型。");
 }
 
 function setGlossStatus(t, cls = "") { $("glossStatus").textContent = t; $("glossStatus").className = "hint " + cls; }
@@ -653,11 +757,8 @@ function parseGlossary(text) {
 async function generateGlossary(text, label) {
   text = (text || "").trim();
   if (!text) return setGlossStatus("没有可用的文本。", "err");
-  const useFree = $("glossModel").value === "free";
   const body = {
-    text, use_free: useFree,
-    provider: $("provider").value, model: $("model").value.trim(),
-    api_key: $("apiKey").value.trim() || null, base_url: $("baseUrl").value.trim() || null,
+    text, use_free: $("glossModel").value === "free", ...modelPayload(),
     source_lang: $("sourceLang").value, target_lang: $("targetLang").value, domain: $("domain").value,
   };
   $("glossDrop").classList.add("busy");
@@ -711,7 +812,7 @@ $("glossDrop").ondrop = e => {
   if (t) generateGlossary(t, "拖入的文本");
 };
 $("btnGlossDoc").onclick = () => {
-  if (!doc || !doc.paras.length) return setGlossStatus("请先在右侧上传文献或粘贴文本。", "err");
+  if (!doc || !doc.paras.length) return setGlossStatus("请先在中间上传文献或粘贴文本。", "err");
   generateGlossary(doc.paras.map(p => p.src).join("\n\n"), doc.name);
 };
 $("btnGlossClear").onclick = () => {

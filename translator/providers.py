@@ -1,7 +1,7 @@
 """各大模型服务商的统一流式调用接口。
 
 - Claude 使用官方 anthropic SDK；
-- GPT / Gemini / DeepSeek / Kimi / 通义千问 / 自定义服务均使用 OpenAI 兼容接口（openai SDK + base_url）。
+- 其余服务商（智谱、硅基流动、OpenRouter、GPT、Gemini、DeepSeek、Kimi、通义千问、自定义）均使用 OpenAI 兼容接口（openai SDK + base_url）。
 """
 from __future__ import annotations
 
@@ -14,71 +14,133 @@ from urllib.parse import urlparse
 from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 
-# 模型列表只是网页上的“建议值”，用户可以直接输入任意模型名。
+# 每个服务商的常用模型（[模型名, 说明]），网页上作为下拉选项；用户也可以选“其他”自己填写。
+# 模型更新很快，这里的列表核对于 2026 年 10 月，以各家官网为准。
+FREE_ZHIPU_MODELS = ["glm-4.7-flash", "glm-4-flash-250414"]  # 智谱官方免费模型
+
 PROVIDERS: dict[str, dict] = {
+    # ---------- 免费服务商 ----------
+    "zhipu": {
+        "label": "智谱 GLM（免费）",
+        "env": "FREE_API_KEY",      # 服务器内置 Key：只允许调用免费模型，并按 IP 限额
+        "base_url": "https://open.bigmodel.cn/api/paas/v4/",
+        "builtin_models": FREE_ZHIPU_MODELS,
+        "key_url": "https://open.bigmodel.cn",
+        "models": [
+            ["glm-4.7-flash", "免费 · 推荐"],
+            ["glm-4-flash-250414", "免费"],
+            ["glm-5.2", "旗舰 · 需自己的 Key"],
+            ["glm-4.7", "需自己的 Key"],
+        ],
+    },
+    "siliconflow": {
+        "label": "硅基流动（免费）",
+        "env": "SILICONFLOW_API_KEY",
+        "base_url": "https://api.siliconflow.cn/v1",
+        "key_url": "https://cloud.siliconflow.cn",
+        "models": [
+            ["Qwen/Qwen3-8B", "免费"],
+            ["THUDM/GLM-4-9B-0414", "免费"],
+            ["Qwen/Qwen2.5-7B-Instruct", "免费"],
+        ],
+    },
+    "openrouter": {
+        "label": "OpenRouter（免费）",
+        "env": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1",
+        "key_url": "https://openrouter.ai/keys",
+        "models": [
+            ["qwen/qwen3.8-27b:free", "免费"],
+            ["google/gemma-4-31b-it:free", "免费"],
+            ["nvidia/nemotron-3-super-120b-a12b:free", "免费"],
+            ["openrouter/free", "免费 · 自动选择"],
+        ],
+    },
+    "gemini": {
+        "label": "Gemini（免费额度）",
+        "env": "GEMINI_API_KEY",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "key_url": "https://aistudio.google.com/apikey",
+        "models": [
+            ["gemini-3-flash-preview", "有免费额度"],
+            ["gemini-3.1-flash-lite", "轻量"],
+            ["gemini-3.1-pro-preview", "旗舰 · 付费"],
+        ],
+    },
+    # ---------- 付费服务商 ----------
+    "deepseek": {
+        "label": "DeepSeek",
+        "env": "DEEPSEEK_API_KEY",
+        "base_url": "https://api.deepseek.com",
+        "key_url": "https://platform.deepseek.com/api_keys",
+        "models": [["deepseek-v4-pro", "旗舰"], ["deepseek-flash", "快速 · 便宜"]],
+    },
     "claude": {
         "label": "Claude (Anthropic)",
         "env": "ANTHROPIC_API_KEY",
         "base_url": None,
-        "models": ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+        "key_url": "https://console.anthropic.com/settings/keys",
+        "models": [
+            ["claude-opus-5-5", "推荐"],
+            ["claude-sonnet-5-5", "均衡"],
+            ["claude-haiku-5-5", "快速 · 便宜"],
+            ["claude-fable-5-1", "最强"],
+        ],
     },
     "openai": {
         "label": "GPT (OpenAI)",
         "env": "OPENAI_API_KEY",
         "base_url": None,
-        "models": ["gpt-5", "gpt-5-mini", "gpt-4.1"],
-    },
-    "gemini": {
-        "label": "Gemini (Google)",
-        "env": "GEMINI_API_KEY",
-        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
-        "models": ["gemini-2.5-pro", "gemini-2.5-flash"],
-    },
-    "deepseek": {
-        "label": "DeepSeek",
-        "env": "DEEPSEEK_API_KEY",
-        "base_url": "https://api.deepseek.com",
-        "models": ["deepseek-chat", "deepseek-reasoner"],
+        "key_url": "https://platform.openai.com/api-keys",
+        "models": [["gpt-5.5", "旗舰"], ["gpt-5.4-mini", "均衡"], ["gpt-5.4-nano", "快速 · 便宜"]],
     },
     "kimi": {
         "label": "Kimi (月之暗面)",
         "env": "MOONSHOT_API_KEY",
         "base_url": "https://api.moonshot.cn/v1",
-        "models": ["kimi-k2-0905-preview", "kimi-k2-turbo-preview", "moonshot-v1-128k"],
+        "key_url": "https://platform.kimi.com",
+        "models": [["kimi-k3", "旗舰"], ["kimi-k2.6", "均衡"]],
     },
     "qwen": {
         "label": "通义千问 (阿里云百炼)",
         "env": "DASHSCOPE_API_KEY",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "models": ["qwen3-max", "qwen-plus", "qwen-turbo"],
+        "key_url": "https://bailian.console.aliyun.com",
+        "models": [
+            ["qwen3.7-max", "旗舰"],
+            ["qwen3.8-flash", "快速 · 便宜"],
+            ["qwen3.7-flash", "快速"],
+            ["qwen-plus", "均衡"],
+        ],
     },
     "custom": {
-        "label": "自定义（OpenAI 兼容：智谱、中转站、本地模型等）",
+        "label": "自定义（OpenAI 兼容）",
         "env": "CUSTOM_API_KEY",
         "base_url": os.getenv("CUSTOM_BASE_URL") or None,
         "models": [],
     },
 }
+DEFAULT_PROVIDER = "zhipu"
 
-# 内置免费模型：仅用于“自动生成术语表”，由服务器配置 Key，不在服务商列表中展示。
-# 默认使用智谱 GLM-4.7-Flash（官方免费模型），可通过环境变量替换为其他 OpenAI 兼容的免费模型。
-FREE_MODEL = {
-    "env": "FREE_API_KEY",
-    "base_url": os.getenv("FREE_BASE_URL") or "https://open.bigmodel.cn/api/paas/v4/",
-    "model": os.getenv("FREE_MODEL") or "glm-4.7-flash",
-    "label": os.getenv("FREE_MODEL_LABEL") or "智谱 GLM-4.7-Flash",
-}
-PROVIDERS["free"] = {"label": FREE_MODEL["label"], "env": FREE_MODEL["env"],
-                     "base_url": FREE_MODEL["base_url"], "models": [FREE_MODEL["model"]], "hidden": True}
+# “自动生成术语表”使用的内置免费模型
+FREE_MODEL = {"provider": "zhipu", "model": os.getenv("FREE_MODEL") or "glm-4.7-flash",
+              "label": os.getenv("FREE_MODEL_LABEL") or "智谱 GLM-4.7-Flash"}
 
 
-def free_extra_body() -> dict | None:
-    """默认关闭智谱模型的深度思考，抽取术语更快；不需要时可设 FREE_EXTRA_BODY={}。"""
-    raw = os.getenv("FREE_EXTRA_BODY")
-    if raw is None:
-        return {"thinking": {"type": "disabled"}} if "bigmodel.cn" in FREE_MODEL["base_url"] else None
-    import json
-    return json.loads(raw) or None
+def model_ids(provider: str) -> list[str]:
+    return [m[0] for m in PROVIDERS[provider]["models"]]
+
+
+def default_extra_body(provider: str, model: str) -> dict | None:
+    """智谱 GLM-4.5 及以后的模型默认开启深度思考，翻译和抽取术语时关闭，速度更快。"""
+    if provider == "zhipu" and model.startswith(("glm-4.5", "glm-4.6", "glm-4.7", "glm-5")):
+        return {"thinking": {"type": "disabled"}}
+    return None
+
+
+def uses_builtin_key(provider: str, api_key: str | None) -> bool:
+    """用户没填 Key、且该服务商由服务器提供内置免费额度时为 True（需要限额）。"""
+    return not api_key and "builtin_models" in PROVIDERS.get(provider, {})
 
 
 # 支持服务端拒答兜底（fallbacks="default"）的 Claude 模型；Haiku 不支持。
@@ -130,9 +192,12 @@ async def stream_chat(
     """以流式方式返回模型输出的文本片段。"""
     if provider not in PROVIDERS:
         raise ProviderError(f"未知的服务商：{provider}")
+    if uses_builtin_key(provider, api_key) and model not in PROVIDERS[provider]["builtin_models"]:
+        raise ProviderError(f"本站免费额度只能使用免费模型（{'、'.join(PROVIDERS[provider]['builtin_models'])}），"
+                            "其他模型请填写你自己的 API Key")
     key = resolve_key(provider, api_key)
     if not key:
-        raise ProviderError(f"缺少 API Key：请在网页中填写，或在服务器设置环境变量 {PROVIDERS[provider]['env']}")
+        raise ProviderError("缺少 API Key：请在左侧填写该服务商的 API Key")
     if base_url:
         _check_base_url(base_url)
 
@@ -143,6 +208,8 @@ async def stream_chat(
         url = base_url or PROVIDERS[provider]["base_url"]
         if provider == "custom" and not url:
             raise ProviderError("自定义服务商需要填写 Base URL")
+        if extra_body is None:
+            extra_body = default_extra_body(provider, model)
         async for t in _stream_openai_compatible(model, system, user, key, url, extra_body):
             yield t
 
