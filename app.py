@@ -145,6 +145,7 @@ class TranslateReq(BaseModel):
     ya: int = Field(DEFAULT_YA, ge=1, le=10)
     chunk_chars: int = Field(2500, ge=300, le=20000)
     concurrency: int = Field(4, ge=1, le=16)
+    token_budget: int = Field(0, ge=0, le=1_000_000_000)  # token 限值，0 为不限
 
 
 @app.post("/api/translate", dependencies=[Depends(check_password)])

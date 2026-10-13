@@ -37,25 +37,33 @@ header::after  { width: 300px; height: 110px; right: 8%; top: -40px; background:
 .brand h1 { margin: 0; font: 600 26px/1.1 var(--serif); letter-spacing: .3em; padding-left: .3em; }
 .brand .tag { color: var(--muted); font-size: 12px; letter-spacing: .12em; margin-top: 4px; }
 
-/* ---------- 三栏布局 ---------- */
-.layout { display: grid; gap: 16px; padding: 12px 24px; max-width: 1680px; width: 100%; margin: 0 auto;
-  grid-template-columns: 290px minmax(0, 1fr) 290px; grid-template-areas: "left main right"; }
-.col-left { grid-area: left; } .col-main { grid-area: main; } .col-right { grid-area: right; }
-.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
-/* 宽屏：整页恰好一屏高，三栏底部对齐，内容多时各栏内部滚动 */
+/* ---------- 两行三列布局：同一行的模块等高 ----------
+   第一行：模型 | 上传文献 | 翻译偏好
+   第二行：语言与术语 | 导出 + 对照表 | 高级选项 */
+.layout { display: grid; gap: 14px 16px; padding: 12px 24px; max-width: 1680px; width: 100%; margin: 0 auto;
+  grid-template-columns: 290px minmax(0, 1fr) 290px;
+  grid-template-areas: "model upload pref" "lang center adv"; }
+#cModel { grid-area: model; } #cUpload { grid-area: upload; } #cPref { grid-area: pref; }
+#cLang { grid-area: lang; } #cCenter { grid-area: center; } #cAdv { grid-area: adv; }
+.layout > * { min-width: 0; min-height: 0; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.flexcard { display: flex; flex-direction: column; }
+.grow { flex: 1 1 auto; }
+/* 宽屏：整页恰好一屏高；第二行占满剩余高度，内容多时模块内部滚动 */
 @media (min-width: 1200px) and (min-height: 700px) {
   body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-  .layout { flex: 1; min-height: 0; }
-  .col { overflow-y: auto; scrollbar-width: thin; padding-bottom: 2px; }
-  .col-left > .card:last-child, .col-right > .card:last-child { flex: 1 0 auto; }
-  .sheet { flex: 1; min-height: 160px; }
+  .layout { flex: 1; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+  #cLang, #cAdv { overflow-y: auto; scrollbar-width: thin; }
+  #cLang .grow, #cAdv .grow { min-height: 64px; resize: none; }
+  .sheet { flex: 1; min-height: 140px; }
 }
 @media (max-width: 1199px) {
-  .layout { grid-template-columns: 280px minmax(0, 1fr); grid-template-areas: "left main" "right main"; }
-  .col-main { align-self: start; } .sheet { max-height: 80vh; }
+  .layout { grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-areas: "model upload" "lang center" "pref center" "adv center"; }
+  #cCenter { align-self: start; } .sheet { max-height: 80vh; }
 }
 @media (max-width: 860px) {
-  .layout { grid-template-columns: 1fr; grid-template-areas: "left" "main" "right"; padding: 12px; }
+  .layout { grid-template-columns: 1fr; grid-template-areas: "model" "lang" "pref" "adv" "upload" "center"; padding: 12px; }
   header { padding: 12px 16px; }
 }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 15px; box-shadow: var(--shadow); }
@@ -88,7 +96,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 /* ---------- 术语表生成 ---------- */
 .gloss-gen { margin-top: 8px; }
-.gloss-drop { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 10px; border: 1.5px dashed var(--line);
+.gloss-drop { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 24px 10px; min-height: 72px; border: 1.5px dashed var(--line);
   border-radius: 10px; font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; transition: all .25s; }
 .gloss-drop b { color: var(--accent); font-weight: 600; }
 .gloss-drop svg { flex: none; color: var(--accent); }
@@ -96,14 +104,15 @@ details[open] > summary::before { transform: rotate(90deg); }
 .gloss-drop.busy { pointer-events: none; border-style: solid; border-color: var(--accent); background: var(--accent-weak); }
 .gloss-drop.busy svg { animation: spin 1.6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.gloss-gen select { margin-top: 6px; font-size: 12.5px; }
+.gloss-gen select, .gloss-gen input { margin-top: 6px; font-size: 12.5px; }
+.gloss-gen .sublabel { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; }
 .gloss-gen .row { margin-top: 6px; }
 .gloss-gen button { flex: 1; padding: 5px 8px; font-size: 12px; }
 #glossStatus.err { color: var(--err); }
 #glossStatus.ok { color: var(--ok); }
 
 /* ---------- 翻译偏好（信达雅） ---------- */
-.dial { display: grid; grid-template-columns: 34px 1fr 58px; align-items: center; gap: 9px; margin: 8px 0 0; }
+.dial { display: grid; grid-template-columns: 34px 1fr 58px; align-items: center; gap: 9px; margin: 13px 0 0; }
 .dial .ch { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 600 17px/1 var(--serif);
   border: 1px solid var(--line); background: var(--bg); transition: transform .25s, border-color .25s, color .25s; }
 .dial.active .ch { transform: scale(1.08); border-color: var(--accent); color: var(--accent); }
@@ -118,12 +127,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 17px;
   border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.15); transition: transform .15s; }
 input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.18); }
 input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); }
-.presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
+.presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 14px; }
 .chip { padding: 3px 0; font-size: 11.5px; border-radius: 999px; }
 .chip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-weak); }
 
 /* ---------- 中栏：上传、提示、工具栏 ---------- */
-.drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 16px; text-align: center; color: var(--muted); cursor: pointer;
+.drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 24px 16px; text-align: center; color: var(--muted); cursor: pointer;
         transition: all .25s; background: linear-gradient(180deg, transparent, var(--accent-weak)); background-size: 100% 300%; background-position: top; }
 .drop:hover, .drop.over { border-color: var(--accent); color: var(--accent); background-position: bottom; }
 .drop strong { display: block; font: 600 15px/1.6 var(--serif); color: var(--text); letter-spacing: .06em; }
@@ -169,11 +178,16 @@ tr.pagebreak td { padding: 3px 14px; font-size: 11px; color: var(--muted); text-
 .empty-state { flex: 1; display: grid; place-items: center; min-height: 160px; color: var(--muted); font: 15px/1 var(--serif); letter-spacing: .4em; }
 .empty-state span { padding-left: .4em; opacity: .8; }
 
-/* ---------- 右栏：导出 ---------- */
-.export select { margin-top: 0; }
-.export .row { margin-top: 8px; }
-.export .actions { display: flex; gap: 8px; margin-top: 10px; }
-.export .actions button { flex: 1; }
+/* ---------- 导出条 ---------- */
+.export-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 9px 14px; }
+.export-bar h2 { margin: 0 6px 0 0; }
+.export-bar select { width: auto; }
+.export-bar .check { margin: 0; }
+.export-bar .spacer { flex: 1; }
+/* ---------- token 预估 ---------- */
+.tokbox { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; line-height: 1.6; }
+.tokbox b { color: var(--accent); font: 600 14px var(--serif); }
+.tokbox .over { color: var(--err); }
 
 footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px; padding: 4px 16px 10px; letter-spacing: .06em; }
 footer .motto { font-family: var(--serif); letter-spacing: .12em; }
@@ -208,144 +222,142 @@ footer a { text-decoration: none; border-bottom: 1px dashed currentColor; }
 </header>
 
 <div class="layout">
-  <!-- ===== 左栏：模型、语言与术语 ===== -->
-  <aside class="col col-left">
-    <div class="card">
-      <h2>模型</h2>
-      <label>服务商</label>
-      <select id="provider"></select>
-      <label>模型</label>
-      <select id="modelSel"></select>
-      <input id="modelCustom" placeholder="输入模型名，如 glm-4.7-flash" style="display:none">
-      <label>API Key</label>
-      <input id="apiKey" type="password" autocomplete="off">
-      <label class="check small"><input type="checkbox" id="rememberKey"> 在本浏览器记住 API Key</label>
-      <div class="hint" id="keyHint"></div>
-      <div id="customUrlBox" style="display:none">
-        <label>Base URL（必填）</label>
-        <input id="customUrl" placeholder="如 https://api.example.com/v1">
+  <!-- ===== 第一行 ===== -->
+  <section class="card" id="cModel">
+    <h2>模型</h2>
+    <label>服务商</label>
+    <select id="provider"></select>
+    <label>模型</label>
+    <select id="modelSel"></select>
+    <input id="modelCustom" placeholder="输入模型名，如 glm-4.7-flash" style="display:none">
+    <label>API Key</label>
+    <input id="apiKey" type="password" autocomplete="off">
+    <label class="check small"><input type="checkbox" id="rememberKey"> 在本浏览器记住 API Key</label>
+    <div class="hint" id="keyHint"></div>
+    <div id="customUrlBox" style="display:none">
+      <label>Base URL（必填）</label>
+      <input id="customUrl" placeholder="如 https://api.example.com/v1">
+    </div>
+  </section>
+
+  <section class="card" id="cUpload">
+    <div class="drop" id="drop"><strong>上传文献</strong>点击或拖入 PDF / DOCX / TXT / Markdown 文件
+      <input type="file" id="file" accept=".pdf,.docx,.txt,.md,.markdown,.tex" hidden></div>
+    <div class="tip">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.2v4M8 4.8v.01" stroke-linecap="round"/></svg>
+      <div>
+        建议先用 OCR 工具把 PDF 识别并<b>导出为 Markdown</b>再上传，扫描版、双栏、公式表格多的文献效果好得多：
+        <span class="links">
+          <a href="https://aistudio.baidu.com/paddleocr" target="_blank" rel="noopener">飞桨 PaddleOCR ↗</a>
+          <a href="https://mineru.org.cn" target="_blank" rel="noopener">MinerU ↗</a>
+          <a href="https://doc2x.noedgeai.com" target="_blank" rel="noopener">Doc2X ↗</a>
+          <a href="https://www.textin.com" target="_blank" rel="noopener">TextIn ↗</a>
+        </span>
       </div>
     </div>
+    <details>
+      <summary>或者直接粘贴文本</summary>
+      <textarea id="pasteText" rows="5" placeholder="段落之间用空行分隔"></textarea>
+      <div style="margin-top:6px"><button id="loadPaste">载入文本</button></div>
+    </details>
+    <div class="toolbar">
+      <button class="primary" id="btnStart" disabled>开始翻译</button>
+      <button id="btnStop" disabled>停止</button>
+      <button id="btnRetry" disabled>重试失败段</button>
+      <span class="spacer"></span>
+      <button id="btnView">只看译文</button>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="status" id="status">请先上传文件或粘贴文本。译文可直接点击修改。</div>
+    <div class="err-list" id="errors"></div>
+  </section>
 
-    <div class="card">
-      <h2>语言与术语</h2>
+  <section class="card" id="cPref">
+    <h2>翻译偏好</h2>
+    <div class="hint">信达雅三者此消彼长，拖动一项，其余随之调整。</div>
+    <div class="dial" data-k="xin"><div class="ch">信</div>
+      <div><div class="cap">直译 · 忠实原文</div><input type="range" min="1" max="10" step="1" id="xin"></div>
+      <div class="meta"><span class="num" id="xinV"></span><span class="lv" id="xinL"></span></div></div>
+    <div class="dial" data-k="da"><div class="ch">达</div>
+      <div><div class="cap">意译 · 通顺晓畅</div><input type="range" min="1" max="10" step="1" id="da"></div>
+      <div class="meta"><span class="num" id="daV"></span><span class="lv" id="daL"></span></div></div>
+    <div class="dial" data-k="ya"><div class="ch">雅</div>
+      <div><div class="cap">润色 · 文辞雅致</div><input type="range" min="1" max="10" step="1" id="ya"></div>
+      <div class="meta"><span class="num" id="yaV"></span><span class="lv" id="yaL"></span></div></div>
+    <div class="presets" id="presets"></div>
+  </section>
+
+  <!-- ===== 第二行 ===== -->
+  <section class="card flexcard" id="cLang">
+    <h2>语言与术语</h2>
+    <div class="row">
+      <div style="flex:1.35"><label>原文语言</label>
+        <select id="sourceLang">
+          <option value="en">英文</option><option value="ja">日文</option><option value="de">德文</option>
+          <option value="fr">法文</option><option value="ru">俄文</option><option value="lzh">文言文</option>
+          <option value="auto">其他（AI 自动识别）</option>
+        </select></div>
+      <div><label>译为</label>
+        <select id="targetLang"><option value="zh">简体中文</option><option value="zh-Hant">繁体中文</option><option value="en">英文</option></select></div>
+    </div>
+    <label>学科领域（可选）</label>
+    <input id="domain" placeholder="如：哲学、历史">
+    <label>术语表（可选，每行一条）</label>
+    <textarea id="glossary" class="grow" rows="4" placeholder="Dao / the Way = 道&#10;principle (li) = 理&#10;material force (qi) = 气&#10;humaneness (ren) = 仁&#10;理気二元論 = 理气二元论&#10;天人相関説 = 天人感应说"></textarea>
+    <div class="gloss-gen">
+      <div class="gloss-drop" id="glossDrop">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 1.5l1.4 3.6 3.6 1.4-3.6 1.4L8 11.5 6.6 7.9 3 6.5l3.6-1.4z"/><path d="M13 11l.6 1.4 1.4.6-1.4.6L13 15l-.6-1.4-1.4-.6 1.4-.6z"/></svg>
+        <span>拖入文本或文件，<b>AI 自动生成术语表</b></span>
+        <input type="file" id="glossFile" accept=".pdf,.docx,.txt,.md,.markdown,.tex" hidden>
+      </div>
+      <div class="sublabel">生成术语表所用的服务商与模型（可与翻译不同）</div>
+      <select id="glossProvider"></select>
+      <select id="glossModelSel"></select>
+      <input id="glossModelCustom" placeholder="输入模型名" style="display:none">
+      <input id="glossKey" type="password" autocomplete="off" placeholder="该服务商的 API Key" style="display:none">
       <div class="row">
-        <div style="flex:1.35"><label>原文语言</label>
-          <select id="sourceLang">
-            <option value="en">英文</option><option value="ja">日文</option><option value="de">德文</option>
-            <option value="fr">法文</option><option value="ru">俄文</option><option value="lzh">文言文</option>
-            <option value="auto">其他（AI 自动识别）</option>
-          </select></div>
-        <div><label>译为</label>
-          <select id="targetLang"><option value="zh">简体中文</option><option value="zh-Hant">繁体中文</option><option value="en">英文</option></select></div>
+        <button id="btnGlossDoc">从当前文献生成</button>
+        <button id="btnGlossClear">清空术语表</button>
       </div>
-      <label>学科领域（可选）</label>
-      <input id="domain" placeholder="如：哲学、历史">
-      <label>术语表（可选，每行一条）</label>
-      <textarea id="glossary" rows="4" placeholder="Dao / the Way = 道&#10;principle (li) = 理&#10;material force (qi) = 气&#10;humaneness (ren) = 仁&#10;理気二元論 = 理气二元论&#10;天人相関説 = 天人感应说"></textarea>
-      <div class="gloss-gen">
-        <div class="gloss-drop" id="glossDrop">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 1.5l1.4 3.6 3.6 1.4-3.6 1.4L8 11.5 6.6 7.9 3 6.5l3.6-1.4z"/><path d="M13 11l.6 1.4 1.4.6-1.4.6L13 15l-.6-1.4-1.4-.6 1.4-.6z"/></svg>
-          <span>拖入文本或文件，<b>AI 自动生成术语表</b></span>
-          <input type="file" id="glossFile" accept=".pdf,.docx,.txt,.md,.markdown,.tex" hidden>
-        </div>
-        <select id="glossModel"></select>
-        <div class="row">
-          <button id="btnGlossDoc">从当前文献生成</button>
-          <button id="btnGlossClear">清空术语表</button>
-        </div>
-        <div class="hint" id="glossStatus"></div>
-      </div>
+      <div class="hint" id="glossStatus"></div>
     </div>
-  </aside>
+  </section>
 
-  <!-- ===== 中栏：上传与对照 ===== -->
-  <main class="col col-main" id="main">
-    <div class="card">
-      <div class="drop" id="drop"><strong>上传文献</strong>点击或拖入 PDF / DOCX / TXT / Markdown 文件
-        <input type="file" id="file" accept=".pdf,.docx,.txt,.md,.markdown,.tex" hidden></div>
-      <div class="tip">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.2v4M8 4.8v.01" stroke-linecap="round"/></svg>
-        <div>
-          建议先用 OCR 工具把 PDF 识别并<b>导出为 Markdown</b>再上传，扫描版、双栏、公式表格多的文献效果好得多：
-          <span class="links">
-            <a href="https://aistudio.baidu.com/paddleocr" target="_blank" rel="noopener">飞桨 PaddleOCR ↗</a>
-            <a href="https://mineru.org.cn" target="_blank" rel="noopener">MinerU ↗</a>
-            <a href="https://doc2x.noedgeai.com" target="_blank" rel="noopener">Doc2X ↗</a>
-            <a href="https://www.textin.com" target="_blank" rel="noopener">TextIn ↗</a>
-          </span>
-        </div>
-      </div>
-      <details>
-        <summary>或者直接粘贴文本</summary>
-        <textarea id="pasteText" rows="5" placeholder="段落之间用空行分隔"></textarea>
-        <div style="margin-top:6px"><button id="loadPaste">载入文本</button></div>
-      </details>
-      <div class="toolbar">
-        <button class="primary" id="btnStart" disabled>开始翻译</button>
-        <button id="btnStop" disabled>停止</button>
-        <button id="btnRetry" disabled>重试失败段</button>
-        <span class="spacer"></span>
-        <button id="btnView">只看译文</button>
-      </div>
-      <div class="progress"><div id="bar"></div></div>
-      <div class="status" id="status">请先上传文件或粘贴文本。译文可直接点击修改。</div>
-      <div class="err-list" id="errors"></div>
-    </div>
-
-    <div class="card sheet" id="sheet">
+  <div class="stack" id="cCenter">
+    <section class="card export-bar">
+      <h2>导出</h2>
+      <select id="exportFmt">
+        <option value="docx">Word</option><option value="pdf">PDF</option>
+        <option value="md">Markdown</option><option value="txt">纯文本</option>
+      </select>
+      <select id="exportMode"><option value="1">双语对照</option><option value="0">仅译文</option></select>
+      <label class="check" id="preserveBox"><input type="checkbox" id="preserve"> 保留原文格式（页眉、页脚、页码与分页）</label>
+      <span class="spacer"></span>
+      <button id="btnCopy" disabled>复制译文</button>
+      <button id="btnExport" class="primary" disabled>导出</button>
+    </section>
+    <section class="card sheet" id="sheet">
       <table id="table"><colgroup><col class="c-n"><col class="c-src"><col class="c-tgt"></colgroup><tbody id="tbody"></tbody></table>
       <div class="empty-state" id="emptyState"><span>静候佳篇</span></div>
-    </div>
-  </main>
+    </section>
+  </div>
 
-  <!-- ===== 右栏：翻译偏好、高级选项、导出 ===== -->
-  <aside class="col col-right">
-    <div class="card">
-      <h2>翻译偏好</h2>
-      <div class="hint">信达雅三者此消彼长，拖动一项，其余随之调整。</div>
-      <div class="dial" data-k="xin"><div class="ch">信</div>
-        <div><div class="cap">直译 · 忠实原文</div><input type="range" min="1" max="10" step="1" id="xin"></div>
-        <div class="meta"><span class="num" id="xinV"></span><span class="lv" id="xinL"></span></div></div>
-      <div class="dial" data-k="da"><div class="ch">达</div>
-        <div><div class="cap">意译 · 通顺晓畅</div><input type="range" min="1" max="10" step="1" id="da"></div>
-        <div class="meta"><span class="num" id="daV"></span><span class="lv" id="daL"></span></div></div>
-      <div class="dial" data-k="ya"><div class="ch">雅</div>
-        <div><div class="cap">润色 · 文辞雅致</div><input type="range" min="1" max="10" step="1" id="ya"></div>
-        <div class="meta"><span class="num" id="yaV"></span><span class="lv" id="yaL"></span></div></div>
-      <div class="presets" id="presets"></div>
+  <section class="card flexcard" id="cAdv">
+    <h2>高级选项</h2>
+    <label>其他要求</label>
+    <textarea id="extra" class="grow" rows="4" placeholder="如：译文用于学位论文引用；人名保留原文；脚注单独翻译……"></textarea>
+    <div class="row">
+      <div><label>每块字符数</label><input id="chunkChars" type="number" min="300" max="20000" step="100" value="2500"></div>
+      <div><label>并发数</label><input id="concurrency" type="number" min="1" max="16" value="4"></div>
     </div>
-
-    <div class="card">
-      <h2>高级选项</h2>
-      <label>其他要求</label>
-      <textarea id="extra" rows="1" placeholder="如：译文用于学位论文引用"></textarea>
-      <div class="row">
-        <div><label>每块字符数</label><input id="chunkChars" type="number" min="300" max="20000" step="100" value="2500"></div>
-        <div><label>并发数</label><input id="concurrency" type="number" min="1" max="16" value="4"></div>
-      </div>
-      <div class="hint">块越大上下文越连贯；并发越高越快，但更易触发限流。</div>
-      <label id="baseUrlLabel">Base URL（可选，中转/代理地址）</label>
-      <input id="baseUrl">
-      <div id="pwBox" style="display:none"><label>访问密码</label><input id="appPassword" type="password"></div>
-    </div>
-
-    <div class="card export">
-      <h2>导出</h2>
-      <div class="row">
-        <select id="exportFmt">
-          <option value="docx">Word</option><option value="pdf">PDF</option>
-          <option value="md">Markdown</option><option value="txt">纯文本</option>
-        </select>
-        <select id="exportMode"><option value="1">双语对照</option><option value="0">仅译文</option></select>
-      </div>
-      <label class="check" id="preserveBox"><input type="checkbox" id="preserve"> 保留原文格式（页眉、页脚、页码与分页）</label>
-      <div class="actions">
-        <button id="btnCopy" disabled>复制译文</button>
-        <button id="btnExport" class="primary" disabled>导出</button>
-      </div>
-    </div>
-  </aside>
+    <label>Token 用量预估</label>
+    <div class="tokbox" id="tokEstimate">载入文献后显示预估用量。</div>
+    <label>Token 限值（可选，最多使用多少 token）</label>
+    <input id="tokenLimit" type="number" min="0" step="1000" placeholder="不限，例如 200000">
+    <label id="baseUrlLabel">Base URL（可选，中转/代理地址）</label>
+    <input id="baseUrl">
+    <div id="pwBox" style="display:none"><label>访问密码</label><input id="appPassword" type="password"></div>
+  </section>
 </div>
 <footer>
   <span class="motto">灵译 · 以信为本，以达为用，以雅为归</span>
@@ -368,6 +380,8 @@ let doc = store.get("doc", null);
 let controller = null;
 const SETTINGS_VERSION = 2;   // 默认值有大改动时加 1，让老用户也用上新的默认服务商与语言
 const OTHER = "__other";
+const keysMem = {};   // 本次会话中各服务商填写过的 Key（不落盘；勾选“记住”时才写入浏览器存储）
+const keyFor = p => keysMem[p] || store.get("keys", {})[p] || "";
 
 // ---------- 翻译偏好：信达雅三者联动 ----------
 // 规则：信 + 达 恒为 11（直译与意译此消彼长）；
@@ -435,16 +449,17 @@ function currentBaseUrl() {
   return ($("provider").value === "custom" ? $("customUrl").value : $("baseUrl").value).trim() || null;
 }
 
-function fillModels(p, wanted) {
+function fillModelSelect(sel, custom, p, wanted) {
   const info = CONFIG.providers[p];
-  $("modelSel").innerHTML = info.models.map(([id, note]) => `<option value="${esc(id)}">${esc(id)}${note ? `（${esc(note)}）` : ""}</option>`).join("")
+  sel.innerHTML = info.models.map(([id, note]) => `<option value="${esc(id)}">${esc(id)}${note ? `（${esc(note)}）` : ""}</option>`).join("")
     + `<option value="${OTHER}">其他（自己填写模型名）</option>`;
   const ids = info.models.map(m => m[0]);
-  if (wanted && ids.includes(wanted)) { $("modelSel").value = wanted; $("modelCustom").value = ""; }
-  else if (wanted) { $("modelSel").value = OTHER; $("modelCustom").value = wanted; }
-  else $("modelSel").value = ids[0] || OTHER;
-  $("modelCustom").style.display = $("modelSel").value === OTHER ? "" : "none";
+  if (wanted && ids.includes(wanted)) { sel.value = wanted; custom.value = ""; }
+  else if (wanted) { sel.value = OTHER; custom.value = wanted; }
+  else sel.value = ids[0] || OTHER;
+  custom.style.display = sel.value === OTHER ? "" : "none";
 }
+function fillModels(p, wanted) { fillModelSelect($("modelSel"), $("modelCustom"), p, wanted); }
 
 function updateKeyHint() {
   const p = $("provider").value, info = CONFIG.providers[p], model = currentModel();
@@ -480,13 +495,13 @@ function onProviderChange(first) {
   $("customUrlBox").style.display = isCustom ? "" : "none";
   $("baseUrl").style.display = $("baseUrlLabel").style.display = isCustom ? "none" : "";
   $("customUrl").value = (s.baseUrlBy || {}).custom || "";
-  $("apiKey").value = store.get("keys", {})[p] || "";
+  $("apiKey").value = keyFor(p);
   updateKeyHint();
 }
 
 // ---------- 设置的保存与恢复 ----------
 const SETTING_IDS = ["provider", "sourceLang", "targetLang", "domain", "glossary", "extra",
-                     "chunkChars", "concurrency", "rememberKey", "exportFmt", "exportMode", "preserve"];
+                     "chunkChars", "concurrency", "tokenLimit", "rememberKey", "exportFmt", "exportMode", "preserve"];
 
 function saveSettings() {
   const old = store.get("settings", {}), s = { v: SETTINGS_VERSION };
@@ -516,6 +531,7 @@ async function init() {
   onProviderChange(true);
   initStyle();
   initGlossaryGen();
+  updateEstimate();
   if (CONFIG.password_required) { $("pwBox").style.display = ""; $("appPassword").value = store.get("pw", ""); }
   $("provider").addEventListener("change", () => { onProviderChange(false); saveSettings(); });
   $("modelSel").addEventListener("change", () => {
@@ -524,6 +540,8 @@ async function init() {
     updateKeyHint(); saveSettings();
   });
   ["modelCustom", "apiKey"].forEach(id => $(id).addEventListener("input", updateKeyHint));
+  $("apiKey").addEventListener("input", () => { keysMem[$("provider").value] = $("apiKey").value.trim(); refreshGlossKey(); });
+  ["chunkChars", "glossary", "extra", "domain", "targetLang", "tokenLimit"].forEach(id => $(id).addEventListener("input", updateEstimate));
   SETTING_IDS.concat(["apiKey", "modelCustom", "baseUrl", "customUrl"]).forEach(id => $(id).addEventListener("change", saveSettings));
   $("appPassword").addEventListener("change", () => store.set("pw", $("appPassword").value));
   render();
@@ -547,11 +565,41 @@ function modelPayload() {
   };
 }
 
+// ---------- token 预估（与后端 estimate_tokens 公式一致，只求大致） ----------
+const CJK_RE = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\uff00-\uffef]/g;
+function estTokens(text) {
+  const cjk = (text.match(CJK_RE) || []).length;
+  return Math.round(cjk * 0.8 + (text.length - cjk) / 3.6) + 1;
+}
+const fmtTok = n => n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1) + " 万" : n.toLocaleString();
+let lastUsage = null;   // 最近一次翻译的实际用量 {input, output, exact}
+
+function updateEstimate() {
+  const box = $("tokEstimate");
+  if (!doc || !doc.paras.length) { box.textContent = "载入文献后显示预估用量。"; return; }
+  const left = doc.paras.filter(p => p.state !== "done");
+  const srcTok = left.reduce((n, p) => n + estTokens(p.src), 0);
+  const chunkChars = +$("chunkChars").value || 2500;
+  const chunks = Math.max(1, Math.ceil(left.reduce((n, p) => n + p.src.length, 0) / chunkChars));
+  // 每块都要附带：系统提示词（约 700）+ 术语表/领域/其他要求 + 上文语境（约 150）
+  const overhead = 700 + estTokens($("glossary").value + $("domain").value + $("extra").value) + 150;
+  const input = srcTok + chunks * overhead;
+  const output = Math.round(srcTok * ($("targetLang").value.startsWith("zh") ? 1.1 : 1.0));
+  const total = input + output, limit = +$("tokenLimit").value || 0;
+  let html = left.length
+    ? `剩余 ${left.length} 段，预计约 <b>${fmtTok(total)}</b> tokens<br>输入 ~${fmtTok(input)} · 输出 ~${fmtTok(output)}（共 ${chunks} 次请求）`
+    : "全部段落已翻译完成。";
+  if (limit && left.length && total > limit) html += `<br><span class="over">超过限值 ${fmtTok(limit)}，达到限值后将停止翻译</span>`;
+  if (lastUsage) html += `<br>上次实际用量：${fmtTok(lastUsage.input + lastUsage.output)} tokens${lastUsage.exact ? "" : "（部分为估算）"}`;
+  box.innerHTML = html + `<br><span style="opacity:.75">推理类模型的思考过程会额外消耗 token</span>`;
+}
+
 // ---------- 载入文档 ----------
 function setDoc(name, paragraphs, pages) {
   doc = { name: name.replace(/\.[^.]+$/, ""), pages: pages || null,
           paras: paragraphs.map(p => ({ src: p.text, page: p.page ?? null, tgt: "", state: "pending" })) };
-  persist(); render();
+  lastUsage = null;
+  persist(); render(); updateEstimate();
   setStatus(`已载入「${doc.name}」，共 ${doc.paras.length} 段` + (doc.pages ? `、${doc.pages.length} 页。` : "。"));
 }
 
@@ -605,7 +653,7 @@ $("tbody").addEventListener("input", e => {
   if (i === undefined) return;
   doc.paras[i].tgt = e.target.innerText.trim();
   if (doc.paras[i].tgt) { doc.paras[i].state = "done"; e.target.parentElement.className = "done"; }
-  persist(); updateProgress(); updateButtons();
+  persist(); updateProgress(); updateButtons(); updateEstimate();
 });
 
 function updateProgress() {
@@ -618,7 +666,7 @@ function updateButtons() {
   const busy = !!controller, has = !!(doc && doc.paras.length);
   const anyDone = has && doc.paras.some(p => p.tgt);
   const anyLeft = has && doc.paras.some(p => p.state !== "done");
-  $("main").classList.toggle("busy", busy);
+  document.body.classList.toggle("busy", busy);
   $("btnStart").disabled = busy || !has || !anyLeft;
   $("btnStart").textContent = anyDone && anyLeft ? "继续翻译" : "开始翻译";
   $("btnStop").disabled = !busy;
@@ -651,9 +699,11 @@ async function translate(onlyFailed) {
     domain: $("domain").value, glossary: $("glossary").value, extra: $("extra").value,
     xin: sv.xin, da: sv.da, ya: sv.ya,
     chunk_chars: +$("chunkChars").value || 2500, concurrency: +$("concurrency").value || 4,
+    token_budget: +$("tokenLimit").value || 0,
   };
   controller = new AbortController(); updateButtons();
-  let chunksTotal = 0, chunksDone = 0, failed = 0;
+  let chunksTotal = 0, chunksDone = 0, failed = 0, budgetHit = false;
+  const used = { input: 0, output: 0, exact: true };
   const t0 = Date.now();
   try {
     const res = await fetch("/api/translate", { method: "POST", headers: headers(), body: JSON.stringify(body), signal: controller.signal });
@@ -670,6 +720,10 @@ async function translate(onlyFailed) {
         if (!line.trim()) continue;
         const ev = JSON.parse(line);
         if (ev.type === "start") chunksTotal = ev.chunks;
+        if (ev.tokens && ev.type !== "done") {
+          used.input += ev.tokens.input; used.output += ev.tokens.output; used.exact = used.exact && ev.tokens.exact;
+        }
+        if (ev.budget) budgetHit = true;
         if (ev.type === "chunk") {
           chunksDone++;
           for (const [i, t] of Object.entries(ev.results)) { doc.paras[i].tgt = t; doc.paras[i].state = "done"; updateRow(+i, true); }
@@ -680,11 +734,13 @@ async function translate(onlyFailed) {
           ev.ids.forEach(i => { doc.paras[i].state = "failed"; updateRow(i); });
           $("errors").textContent += `第 ${ev.ids[0] + 1}–${ev.ids.at(-1) + 1} 段：${ev.message}\n`;
         }
-        if (chunksTotal) setStatus(`翻译中… ${chunksDone}/${chunksTotal} 块，已用 ${Math.round((Date.now() - t0) / 1000)} 秒`);
+        if (chunksTotal) setStatus(`翻译中… ${chunksDone}/${chunksTotal} 块，已用 ${Math.round((Date.now() - t0) / 1000)} 秒，约 ${fmtTok(used.input + used.output)} tokens`);
         updateProgress(); persist();
       }
     }
-    setStatus(failed ? `完成，但有 ${failed} 段失败，可点击「重试失败段」。` : `全部完成，用时 ${Math.round((Date.now() - t0) / 1000)} 秒。`, failed > 0);
+    const tok = `，约 ${fmtTok(used.input + used.output)} tokens`;
+    if (budgetHit) setStatus(`已达到 token 限值，翻译暂停${tok}。可调高限值后点击「重试失败段」继续。`, true);
+    else setStatus(failed ? `完成，但有 ${failed} 段失败，可点击「重试失败段」${tok}。` : `全部完成，用时 ${Math.round((Date.now() - t0) / 1000)} 秒${tok}。`, failed > 0);
   } catch (e) {
     if (e.name === "AbortError") setStatus("已停止。已完成的译文会保留，可点击「继续翻译」。");
     else {
@@ -692,7 +748,8 @@ async function translate(onlyFailed) {
       ids.forEach(i => { if (doc.paras[i].state === "pending") { doc.paras[i].state = "failed"; updateRow(i); } });
     }
   } finally {
-    controller = null; updateButtons(); persist();
+    if (used.input + used.output) lastUsage = used;
+    controller = null; updateButtons(); persist(); updateEstimate();
   }
 }
 
@@ -734,13 +791,36 @@ $("btnExport").onclick = async () => {
 
 // ---------- 自动生成术语表 ----------
 function initGlossaryGen() {
-  const fg = CONFIG.free_glossary || {};
-  $("glossModel").innerHTML =
-    (fg.enabled ? `<option value="free">用内置免费模型（${esc(fg.label)}）</option>` : "") +
-    `<option value="own">用上方选择的模型</option>`;
-  const saved = store.get("glossModel", null);
-  if (saved && [...$("glossModel").options].some(o => o.value === saved)) $("glossModel").value = saved;
-  $("glossModel").onchange = () => store.set("glossModel", $("glossModel").value);
+  $("glossProvider").innerHTML = $("provider").innerHTML;
+  const g = store.get("glossSel", {});
+  $("glossProvider").value = CONFIG.providers[g.provider] ? g.provider : CONFIG.default_provider;
+  fillModelSelect($("glossModelSel"), $("glossModelCustom"), $("glossProvider").value, g.model);
+  refreshGlossKey();
+  $("glossProvider").onchange = () => {
+    fillModelSelect($("glossModelSel"), $("glossModelCustom"), $("glossProvider").value, null);
+    refreshGlossKey(); saveGlossSel();
+  };
+  $("glossModelSel").onchange = () => {
+    $("glossModelCustom").style.display = $("glossModelSel").value === OTHER ? "" : "none";
+    refreshGlossKey(); saveGlossSel();
+  };
+  $("glossModelCustom").onchange = saveGlossSel;
+  $("glossKey").oninput = () => { keysMem[$("glossProvider").value] = $("glossKey").value.trim(); };
+}
+
+function glossModel() {
+  return $("glossModelSel").value === OTHER ? $("glossModelCustom").value.trim() : $("glossModelSel").value;
+}
+function saveGlossSel() { store.set("glossSel", { provider: $("glossProvider").value, model: glossModel() }); }
+
+// 只有在需要时才显示 Key 输入框：免费额度可用且选的是免费模型时不需要
+function refreshGlossKey() {
+  if (!$("glossProvider").value) return;
+  const p = $("glossProvider").value, info = CONFIG.providers[p];
+  const free = info.builtin && info.builtin_models.includes(glossModel());
+  $("glossKey").style.display = free || info.server_key ? "none" : "";
+  if (document.activeElement !== $("glossKey")) $("glossKey").value = keyFor(p);
+  $("glossKey").placeholder = `${info.label.replace(/（.*?）/, "")} 的 API Key`;
 }
 
 function setGlossStatus(t, cls = "") { $("glossStatus").textContent = t; $("glossStatus").className = "hint " + cls; }
@@ -757,8 +837,12 @@ function parseGlossary(text) {
 async function generateGlossary(text, label) {
   text = (text || "").trim();
   if (!text) return setGlossStatus("没有可用的文本。", "err");
+  const gp = $("glossProvider").value;
+  if (!glossModel()) return setGlossStatus("请选择或填写生成术语表所用的模型。", "err");
   const body = {
-    text, use_free: $("glossModel").value === "free", ...modelPayload(),
+    text, use_free: false, provider: gp, model: glossModel(),
+    api_key: ($("glossKey").style.display === "none" ? "" : $("glossKey").value.trim()) || null,
+    base_url: gp === "custom" ? ($("customUrl").value.trim() || null) : null,
     source_lang: $("sourceLang").value, target_lang: $("targetLang").value, domain: $("domain").value,
   };
   $("glossDrop").classList.add("busy");

@@ -64,6 +64,7 @@ class Settings:
     ya: int = DEFAULT_YA        # 雅（润色）1-10
     chunk_chars: int = 2500     # 每次请求的原文字符数上限
     concurrency: int = 4        # 并发请求数
+    token_budget: int = 0       # token 限值（输入+输出），0 表示不限
 
 
 @dataclass
@@ -77,6 +78,16 @@ class Chunk:
     items: list[Item]
     context: str = ""           # 前文（原文），帮助模型保持连贯
     extra_ids: list[int] = field(default_factory=list)
+
+
+_CJK_CHAR = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\uff00-\uffef]")
+
+
+def estimate_tokens(text: str) -> int:
+    """粗略估算 token 数：中日韩字符约 0.8 token/字，其他文字约 3.6 字符/token。
+    与网页上的估算公式保持一致，只用于预估和限值，不追求精确。"""
+    cjk = len(_CJK_CHAR.findall(text))
+    return int(cjk * 0.8 + (len(text) - cjk) / 3.6) + 1
 
 
 def make_chunks(items: list[Item], max_chars: int) -> list[Chunk]:
@@ -162,13 +173,22 @@ def parse_output(text: str, ids: list[int]) -> dict[int, str]:
     return result
 
 
-async def translate_chunk(ch: Chunk, s: Settings, system: str) -> dict[int, str]:
+async def translate_chunk(ch: Chunk, s: Settings, system: str, spent: dict | None = None) -> dict[int, str]:
+    """spent：累加本块实际消耗的 token（服务商未返回用量时按字数估算），重试也计入。"""
     ids = [it.id for it in ch.items]
     last_err: Exception | None = None
     for attempt in range(2):  # 编号对不上时重试一次
-        buf = []
-        async for t in stream_chat(s.provider, s.model, system, build_user_prompt(ch), s.api_key, s.base_url):
-            buf.append(t)
+        buf, usage = [], {}
+        user = build_user_prompt(ch)
+        try:
+            async for t in stream_chat(s.provider, s.model, system, user, s.api_key, s.base_url, usage=usage):
+                buf.append(t)
+        finally:
+            if spent is not None:
+                text = "".join(buf)
+                spent["input"] += usage.get("input") or estimate_tokens(system + user)
+                spent["output"] += usage.get("output") or estimate_tokens(text)
+                spent["exact"] = spent.get("exact", True) and bool(usage)
         out = parse_output("".join(buf), ids)
         missing = [i for i in ids if not out.get(i)]
         if not missing:
@@ -187,19 +207,37 @@ async def translate_items(items: list[Item], s: Settings) -> AsyncIterator[dict]
     chunks = make_chunks(items, s.chunk_chars)
     system = build_system_prompt(s)
     sem = asyncio.Semaphore(max(1, s.concurrency))
+    total = {"input": 0, "output": 0}   # 本次请求累计用量
+    reserved = [0]                      # 已开始但未结束的块预计用量，防止并发时超出限值
+
+    def chunk_estimate(ch: Chunk) -> int:
+        src = estimate_tokens("".join(it.text for it in ch.items))
+        return estimate_tokens(system) + estimate_tokens(ch.context) + src * 2 + 20
 
     async def run(ch: Chunk) -> dict:
         async with sem:
             ids = [it.id for it in ch.items]
+            est = chunk_estimate(ch)
+            used = total["input"] + total["output"]
+            if s.token_budget and used + reserved[0] + est > s.token_budget:
+                return {"type": "error", "ids": ids, "budget": True,
+                        "message": f"已达到 token 限值（{s.token_budget:,}），已用约 {used:,}，本块未翻译"}
+            reserved[0] += est
+            spent = {"input": 0, "output": 0}
             try:
-                res = await translate_chunk(ch, s, system)
+                res = await translate_chunk(ch, s, system, spent)
                 failed = [i for i, t in res.items() if not t]
                 ev = {"type": "chunk", "results": {i: t for i, t in res.items() if t}}
                 if failed:
                     ev["failed"] = failed
-                return ev
             except Exception as e:  # noqa: BLE001 —— 单块失败不影响其他块
-                return {"type": "error", "ids": ids, "message": f"{type(e).__name__}: {e}"}
+                ev = {"type": "error", "ids": ids, "message": f"{type(e).__name__}: {e}"}
+            finally:
+                reserved[0] -= est
+                total["input"] += spent["input"]
+                total["output"] += spent["output"]
+            ev["tokens"] = {"input": spent["input"], "output": spent["output"], "exact": spent.get("exact", False)}
+            return ev
 
     yield {"type": "start", "chunks": len(chunks), "paragraphs": len(items)}
     tasks = [asyncio.create_task(run(ch)) for ch in chunks]
@@ -209,4 +247,4 @@ async def translate_items(items: list[Item], s: Settings) -> AsyncIterator[dict]
     finally:
         for t in tasks:
             t.cancel()
-    yield {"type": "done"}
+    yield {"type": "done", "tokens": total}

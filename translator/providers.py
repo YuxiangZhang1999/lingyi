@@ -12,7 +12,7 @@ from typing import AsyncIterator
 from urllib.parse import urlparse
 
 from anthropic import AsyncAnthropic
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, BadRequestError
 
 # 每个服务商的常用模型（[模型名, 说明]），网页上作为下拉选项；用户也可以选“其他”自己填写。
 # 模型更新很快，这里的列表核对于 2026 年 10 月，以各家官网为准。
@@ -188,8 +188,10 @@ async def stream_chat(
     api_key: str | None = None,
     base_url: str | None = None,
     extra_body: dict | None = None,
+    usage: dict | None = None,
 ) -> AsyncIterator[str]:
-    """以流式方式返回模型输出的文本片段。"""
+    """以流式方式返回模型输出的文本片段。
+    传入 usage 字典时，结束后写入服务商返回的实际用量 {"input": .., "output": ..}（服务商不返回则不写）。"""
     if provider not in PROVIDERS:
         raise ProviderError(f"未知的服务商：{provider}")
     if uses_builtin_key(provider, api_key) and model not in PROVIDERS[provider]["builtin_models"]:
@@ -202,7 +204,7 @@ async def stream_chat(
         _check_base_url(base_url)
 
     if provider == "claude":
-        async for t in _stream_claude(model, system, user, key, base_url):
+        async for t in _stream_claude(model, system, user, key, base_url, usage):
             yield t
     else:
         url = base_url or PROVIDERS[provider]["base_url"]
@@ -210,11 +212,11 @@ async def stream_chat(
             raise ProviderError("自定义服务商需要填写 Base URL")
         if extra_body is None:
             extra_body = default_extra_body(provider, model)
-        async for t in _stream_openai_compatible(model, system, user, key, url, extra_body):
+        async for t in _stream_openai_compatible(model, system, user, key, url, extra_body, usage):
             yield t
 
 
-async def _stream_claude(model, system, user, key, base_url) -> AsyncIterator[str]:
+async def _stream_claude(model, system, user, key, base_url, usage=None) -> AsyncIterator[str]:
     client = AsyncAnthropic(api_key=key, base_url=base_url or None, max_retries=3)
     kwargs = dict(
         model=model,
@@ -233,15 +235,18 @@ async def _stream_claude(model, system, user, key, base_url) -> AsyncIterator[st
         async for text in stream.text_stream:
             yield text
         final = await stream.get_final_message()
+    if usage is not None and final.usage:
+        usage["input"] = final.usage.input_tokens
+        usage["output"] = final.usage.output_tokens
     if final.stop_reason == "refusal":
         raise ProviderError("模型拒绝了该段内容的翻译（refusal）")
     if final.stop_reason == "max_tokens":
         raise ProviderError("输出被截断（max_tokens），请调小分块大小")
 
 
-async def _stream_openai_compatible(model, system, user, key, base_url, extra_body=None) -> AsyncIterator[str]:
+async def _stream_openai_compatible(model, system, user, key, base_url, extra_body=None, usage=None) -> AsyncIterator[str]:
     client = AsyncOpenAI(api_key=key, base_url=base_url, max_retries=3)
-    stream = await client.chat.completions.create(
+    kwargs = dict(
         model=model,
         messages=[
             {"role": "system", "content": system},
@@ -250,8 +255,17 @@ async def _stream_openai_compatible(model, system, user, key, base_url, extra_bo
         stream=True,
         extra_body=extra_body,
     )
+    try:  # 请求在流末尾附带用量；个别服务商不支持该参数时去掉重试
+        stream = await client.chat.completions.create(**kwargs, stream_options={"include_usage": True})
+    except BadRequestError as e:
+        if "stream_options" not in str(e) and "include_usage" not in str(e):
+            raise
+        stream = await client.chat.completions.create(**kwargs)
     finish = None
     async for chunk in stream:
+        if usage is not None and getattr(chunk, "usage", None):
+            usage["input"] = chunk.usage.prompt_tokens or 0
+            usage["output"] = chunk.usage.completion_tokens or 0
         if not chunk.choices:
             continue
         choice = chunk.choices[0]
